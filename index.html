@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Area Ratio Calculator</title>
+<meta name="description" content="Work out how much of Area A is taken up by Areas B, C, and D." />
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#1f2937" />
+<!-- Home-screen web app (iOS + Android) -->
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Area Ratio" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="manifest" href="area-ratio-manifest.json" />
+<link rel="icon" href="data:," />
+<style>
+  :root{
+    --bg:#1f2937;
+    --bg-deep:#111827;
+    --surface:#374151;
+    --surface-2:#2b3648;
+    --border:#4b5563;
+    --border-soft:#3d4a5e;
+    --text:#f9fafb;
+    --muted:#b6becb;
+    --muted-2:#9ca3af;
+    --accent:#22d3ee;
+    --accent-dim:rgba(34,211,238,.14);
+    --accent-ink:#062a33;
+    --c-color:#34d399;
+    --d-color:#fbbf24;
+    --danger:#f87171;
+    --danger-dim:rgba(248,113,113,.12);
+    --radius:10px;
+    --radius-sm:6px;
+  }
+  *{box-sizing:border-box}
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0;
+    background:var(--bg);
+    background-image:linear-gradient(180deg,#232f42 0%, var(--bg) 220px);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height:1.5;
+    min-height:100vh;
+    padding:calc(28px + env(safe-area-inset-top)) 16px calc(36px + env(safe-area-inset-bottom));
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+  }
+  button, input{ font-family:inherit; }
+  button, [role="button"], select, summary, input:not([type="checkbox"],[type="radio"]){ min-height:2.75rem; }
+
+  .app{ width:100%; max-width:480px; display:flex; flex-direction:column; gap:16px; }
+
+  header{ padding:2px 2px 4px; }
+  h1{ font-size:1.35rem; line-height:1.25; font-weight:700; letter-spacing:-.01em; margin:0 0 6px; }
+  .subtitle{ color:var(--muted); font-size:.9rem; margin:0; }
+  .subtitle strong{ color:var(--accent); font-weight:600; }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px;
+    box-shadow:0 6px 16px rgba(0,0,0,.22);
+  }
+  .card-head{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px;
+  }
+  .card-title{
+    display:flex; align-items:center; gap:10px;
+    font-size:.82rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+  }
+  .card-title.is-base{ color:var(--accent); }
+  .letter{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:28px; height:28px; border-radius:7px; flex:0 0 28px;
+    font-size:.9rem; font-weight:800; letter-spacing:0; text-transform:none;
+    background:var(--bg-deep); color:var(--text); border:1px solid var(--border);
+  }
+  .letter.base{ background:var(--accent); color:var(--accent-ink); border-color:transparent; }
+  .letter.b{ color:var(--accent); }
+  .letter.c{ color:var(--c-color); }
+  .letter.d{ color:var(--d-color); }
+  .card-area{
+    font-variant-numeric:tabular-nums; font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:.85rem; color:var(--muted); white-space:nowrap;
+  }
+  .card-area b{ color:var(--text); font-weight:600; }
+
+  .inputs-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .field{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .field label{ font-size:.78rem; font-weight:600; color:var(--muted); }
+  .field input{
+    width:100%;
+    background:var(--bg-deep);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:12px 12px;
+    border-radius:var(--radius-sm);
+    font-size:16px; /* 16px stops iOS Safari zooming on focus */
+    font-variant-numeric:tabular-nums;
+    -moz-appearance:textfield; appearance:textfield;
+  }
+  .field input::-webkit-outer-spin-button,
+  .field input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .field input::placeholder{ color:#6b7280; }
+  .field input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+
+  .times{
+    align-self:end; display:flex; align-items:center; justify-content:center;
+    color:var(--muted-2); font-size:1rem; padding-bottom:12px;
+  }
+  .inputs-row{ display:grid; grid-template-columns:1fr 18px 1fr; gap:4px; align-items:start; }
+
+  /* Remove button — 44px tap target */
+  .remove-btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    min-width:44px; min-height:44px; padding:8px 10px;
+    background:transparent; border:1px solid transparent; border-radius:var(--radius-sm);
+    color:var(--danger); font-size:.82rem; font-weight:600; cursor:pointer;
+  }
+  .remove-btn:hover, .remove-btn:active{ background:var(--danger-dim); }
+  .remove-btn svg{ width:17px; height:17px; fill:currentColor; flex:0 0 auto; }
+
+  /* Add button */
+  .add-btn{
+    width:100%; min-height:52px;
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    background:transparent; border:1.5px dashed var(--border);
+    color:var(--muted); border-radius:var(--radius);
+    font-size:.95rem; font-weight:600; cursor:pointer;
+    padding:12px 16px;
+  }
+  .add-btn:hover, .add-btn:active{ border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+  .add-btn:disabled{ opacity:.45; cursor:default; border-style:solid; }
+  .add-btn:disabled:hover{ border-color:var(--border); color:var(--muted); background:transparent; }
+  .add-btn svg{ width:18px; height:18px; fill:currentColor; flex:0 0 auto; }
+
+  .extra-list{ display:flex; flex-direction:column; gap:16px; }
+  .extra-list:empty{ display:none; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(-6px);} to{ opacity:1; transform:translateY(0);} }
+  .extra-card{ animation:rise .25s ease-out; }
+  @media (prefers-reduced-motion: reduce){ .extra-card{ animation:none; } }
+
+  /* Results */
+  .results{ background:var(--bg-deep); border:1px solid var(--border); border-radius:var(--radius); padding:18px; }
+  .results-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
+  .results-title{ font-size:.82rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .clear-btn{
+    background:none; border:none; color:var(--muted); font-size:.85rem; font-weight:600;
+    cursor:pointer; padding:10px 6px; min-height:44px;
+  }
+  .clear-btn:hover, .clear-btn:active{ color:var(--text); text-decoration:underline; }
+
+  .bar-wrap{ margin:12px 0 4px; }
+  .bar{
+    display:flex; width:100%; height:14px; border-radius:999px; overflow:hidden;
+    background:#1f2937; border:1px solid var(--border-soft);
+  }
+  .bar seg, .bar .seg{ height:100%; transition:width .25s ease; }
+  .bar .seg-b{ background:var(--accent); }
+  .bar .seg-c{ background:var(--c-color); }
+  .bar .seg-d{ background:var(--d-color); }
+  .bar-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:.78rem; color:var(--muted); }
+  .bar-legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .dot{ width:9px; height:9px; border-radius:3px; display:inline-block; }
+  .dot.b{ background:var(--accent);} .dot.c{ background:var(--c-color);} .dot.d{ background:var(--d-color);}
+  .bar-note{ font-size:.8rem; color:var(--muted); margin-top:6px; min-height:1.2em; }
+  .bar-note.over{ color:var(--d-color); }
+
+  .result-row{
+    display:flex; justify-content:space-between; align-items:baseline; gap:14px;
+    padding:11px 0; border-bottom:1px solid var(--border-soft);
+  }
+  .result-row:last-child{ border-bottom:none; }
+  .result-label{ font-size:.92rem; color:var(--muted); display:flex; align-items:center; gap:8px; }
+  .result-nums{ text-align:right; white-space:nowrap; }
+  .result-value{
+    font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric:tabular-nums; font-size:1rem; font-weight:600; color:var(--text);
+  }
+  .result-pct{ font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:.82rem; color:var(--muted); margin-left:8px; }
+  .result-row.total{ border-top:1px solid var(--border); border-bottom:none; margin-top:4px; padding-top:14px; }
+  .result-row.total .result-label{ color:var(--text); font-weight:700; }
+  .result-row.total .result-value{ color:var(--accent); font-size:1.55rem; font-weight:700; }
+  .result-row.total .result-pct{ font-size:.95rem; color:var(--accent); }
+  .hidden{ display:none !important; }
+
+  .hint{
+    font-size:.83rem; color:var(--muted-2); line-height:1.55; margin:2px 2px 0;
+  }
+  .hint strong{ color:var(--muted); font-weight:600; }
+</style>
+</head>
+<body>
+<main class="app" id="app">
+
+  <header>
+    <h1>How much of A is B, C, and D?</h1>
+    <p class="subtitle">Enter the base area <strong>A</strong>, then each target. Ratios update as you type.</p>
+  </header>
+
+  <!-- Area A -->
+  <section class="card" aria-labelledby="title-a">
+    <div class="card-head">
+      <div class="card-title is-base" id="title-a"><span class="letter base">A</span> Area A · Base</div>
+      <div class="card-area" aria-live="off">= <b id="area-a-live">0</b></div>
+    </div>
+    <div class="inputs-row">
+      <div class="field">
+        <label for="a-len">Length</label>
+        <input type="number" id="a-len" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" />
+      </div>
+      <div class="times" aria-hidden="true">×</div>
+      <div class="field">
+        <label for="a-wid">Width</label>
+        <input type="number" id="a-wid" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Area B -->
+  <section class="card" aria-labelledby="title-b">
+    <div class="card-head">
+      <div class="card-title" id="title-b"><span class="letter b">B</span> Area B · Target</div>
+      <div class="card-area">= <b id="area-b-live">0</b></div>
+    </div>
+    <div class="inputs-row">
+      <div class="field">
+        <label for="b-len">Length</label>
+        <input type="number" id="b-len" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" />
+      </div>
+      <div class="times" aria-hidden="true">×</div>
+      <div class="field">
+        <label for="b-wid">Width</label>
+        <input type="number" id="b-wid" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Extra targets C / D are inserted here -->
+  <div class="extra-list" id="extra-list"></div>
+
+  <button type="button" class="add-btn" id="add-btn">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+    <span id="add-btn-label">Add target area C</span>
+  </button>
+
+  <!-- Results -->
+  <section class="results" aria-labelledby="results-title">
+    <div class="results-head">
+      <div class="results-title" id="results-title">Cumulative ratios</div>
+      <button type="button" class="clear-btn" id="clear-btn">Clear all</button>
+    </div>
+
+    <div class="bar-wrap" aria-hidden="true">
+      <div class="bar">
+        <div class="seg seg-b" id="seg-b" style="width:0%"></div>
+        <div class="seg seg-c" id="seg-c" style="width:0%"></div>
+        <div class="seg seg-d" id="seg-d" style="width:0%"></div>
+      </div>
+      <div class="bar-legend">
+        <span><i class="dot b"></i>B</span>
+        <span id="legend-c" class="hidden"><i class="dot c"></i>C</span>
+        <span id="legend-d" class="hidden"><i class="dot d"></i>D</span>
+        <span style="margin-left:auto">of A filled</span>
+      </div>
+      <p class="bar-note" id="bar-note"></p>
+    </div>
+
+    <div class="result-row">
+      <span class="result-label">Area A total</span>
+      <span class="result-nums"><span class="result-value" id="res-area-a">0</span></span>
+    </div>
+    <div class="result-row">
+      <span class="result-label"><i class="dot b"></i>Target B</span>
+      <span class="result-nums"><span class="result-value" id="res-ratio-b">0.0000</span><span class="result-pct" id="res-pct-b">0.0%</span></span>
+    </div>
+    <div class="result-row hidden" id="res-row-c">
+      <span class="result-label"><i class="dot c"></i>Target C</span>
+      <span class="result-nums"><span class="result-value" id="res-ratio-c">0.0000</span><span class="result-pct" id="res-pct-c">0.0%</span></span>
+    </div>
+    <div class="result-row hidden" id="res-row-d">
+      <span class="result-label"><i class="dot d"></i>Target D</span>
+      <span class="result-nums"><span class="result-value" id="res-ratio-d">0.0000</span><span class="result-pct" id="res-pct-d">0.0%</span></span>
+    </div>
+    <div class="result-row total">
+      <span class="result-label">Cumulative ratio</span>
+      <span class="result-nums" aria-live="polite"><span class="result-value" id="res-cumulative">0.0000</span><span class="result-pct" id="res-pct-total">0.0%</span></span>
+    </div>
+  </section>
+
+  <p class="hint"><strong>On your home screen:</strong> in Safari, tap Share, then “Add to Home Screen” — it will open full-screen as <strong>Area Ratio</strong>, with no address bar.</p>
+
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var LETTERS = ['C', 'D'];
+
+  var els = {
+    aLen: document.getElementById('a-len'),
+    aWid: document.getElementById('a-wid'),
+    bLen: document.getElementById('b-len'),
+    bWid: document.getElementById('b-wid'),
+    areaALive: document.getElementById('area-a-live'),
+    areaBLive: document.getElementById('area-b-live'),
+    extraList: document.getElementById('extra-list'),
+    addBtn: document.getElementById('add-btn'),
+    addLabel: document.getElementById('add-btn-label'),
+    clearBtn: document.getElementById('clear-btn'),
+    resAreaA: document.getElementById('res-area-a'),
+    resRatioB: document.getElementById('res-ratio-b'),
+    resPctB: document.getElementById('res-pct-b'),
+    resRowC: document.getElementById('res-row-c'),
+    resRatioC: document.getElementById('res-ratio-c'),
+    resPctC: document.getElementById('res-pct-c'),
+    resRowD: document.getElementById('res-row-d'),
+    resRatioD: document.getElementById('res-ratio-d'),
+    resPctD: document.getElementById('res-pct-d'),
+    resCumulative: document.getElementById('res-cumulative'),
+    resPctTotal: document.getElementById('res-pct-total'),
+    segB: document.getElementById('seg-b'),
+    segC: document.getElementById('seg-c'),
+    segD: document.getElementById('seg-d'),
+    legendC: document.getElementById('legend-c'),
+    legendD: document.getElementById('legend-d'),
+    barNote: document.getElementById('bar-note')
+  };
+
+  function num(input) {
+    if (!input) return 0;
+    var v = parseFloat(input.value);
+    return (isNaN(v) || v < 0) ? 0 : v;
+  }
+  function areaOf(lenInput, widInput) {
+    return num(lenInput) * num(widInput);
+  }
+  function fmtArea(n) {
+    if (!n) return '0';
+    var rounded = Math.round(n * 10000) / 10000;
+    return rounded.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  }
+  function fmtRatio(r) { return r.toFixed(4); }
+  function fmtPct(r) { return (r * 100).toFixed(1) + '%'; }
+
+  // Extra targets are simply the cards currently in the list, in order:
+  // the first is always C, the second always D. Removing C promotes D.
+  function extraCards() {
+    return Array.prototype.slice.call(els.extraList.querySelectorAll('.extra-card'));
+  }
+  function extraArea(card) {
+    var inputs = card.querySelectorAll('input');
+    return areaOf(inputs[0], inputs[1]);
+  }
+
+  function relabelExtras() {
+    extraCards().forEach(function (card, i) {
+      var letter = LETTERS[i];
+      var lower = letter.toLowerCase();
+      card.setAttribute('data-letter', letter);
+      card.querySelector('.letter').textContent = letter;
+      card.querySelector('.letter').className = 'letter ' + lower;
+      card.querySelector('.card-title-text').textContent = 'Area ' + letter + ' · Target';
+      var labels = card.querySelectorAll('label');
+      var inputs = card.querySelectorAll('input');
+      inputs[0].id = 'extra-' + i + '-len';
+      inputs[1].id = 'extra-' + i + '-wid';
+      labels[0].setAttribute('for', inputs[0].id);
+      labels[1].setAttribute('for', inputs[1].id);
+      card.querySelector('.remove-btn').setAttribute('aria-label', 'Remove Area ' + letter);
+    });
+  }
+
+  function updateAddButton() {
+    var count = extraCards().length;
+    if (count === 0) {
+      els.addLabel.textContent = 'Add target area C';
+      els.addBtn.disabled = false;
+    } else if (count === 1) {
+      els.addLabel.textContent = 'Add target area D';
+      els.addBtn.disabled = false;
+    } else {
+      els.addLabel.textContent = 'Areas C and D added';
+      els.addBtn.disabled = true;
+    }
+  }
+
+  function createExtraCard() {
+    var section = document.createElement('section');
+    section.className = 'card extra-card';
+    section.innerHTML =
+      '<div class="card-head">' +
+        '<div class="card-title"><span class="letter c">C</span><span class="card-title-text">Area C · Target</span></div>' +
+        '<div style="display:flex; align-items:center; gap:2px;">' +
+          '<div class="card-area">= <b class="extra-area-live">0</b></div>' +
+          '<button type="button" class="remove-btn" aria-label="Remove Area C">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>' +
+            '<span>Remove</span>' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="inputs-row">' +
+        '<div class="field"><label>Length</label>' +
+          '<input type="number" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" /></div>' +
+        '<div class="times" aria-hidden="true">×</div>' +
+        '<div class="field"><label>Width</label>' +
+          '<input type="number" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" /></div>' +
+      '</div>';
+    return section;
+  }
+
+  function calculate() {
+    var areaA = areaOf(els.aLen, els.aWid);
+    var areaB = areaOf(els.bLen, els.bWid);
+    var cards = extraCards();
+    var areaC = cards.length > 0 ? extraArea(cards[0]) : 0;
+    var areaD = cards.length > 1 ? extraArea(cards[1]) : 0;
+
+    els.areaALive.textContent = fmtArea(areaA);
+    els.areaBLive.textContent = fmtArea(areaB);
+    cards.forEach(function (card, i) {
+      card.querySelector('.extra-area-live').textContent = fmtArea(i === 0 ? areaC : areaD);
+    });
+
+    var ratioB = areaA > 0 ? areaB / areaA : 0;
+    var ratioC = areaA > 0 ? areaC / areaA : 0;
+    var ratioD = areaA > 0 ? areaD / areaA : 0;
+    var total = ratioB + ratioC + ratioD;
+
+    els.resAreaA.textContent = fmtArea(areaA);
+    els.resRatioB.textContent = fmtRatio(ratioB);
+    els.resPctB.textContent = fmtPct(ratioB);
+
+    if (cards.length > 0) {
+      els.resRowC.classList.remove('hidden');
+      els.legendC.classList.remove('hidden');
+      els.resRatioC.textContent = fmtRatio(ratioC);
+      els.resPctC.textContent = fmtPct(ratioC);
+    } else {
+      els.resRowC.classList.add('hidden');
+      els.legendC.classList.add('hidden');
+    }
+    if (cards.length > 1) {
+      els.resRowD.classList.remove('hidden');
+      els.legendD.classList.remove('hidden');
+      els.resRatioD.textContent = fmtRatio(ratioD);
+      els.resPctD.textContent = fmtPct(ratioD);
+    } else {
+      els.resRowD.classList.add('hidden');
+      els.legendD.classList.add('hidden');
+    }
+
+    els.resCumulative.textContent = fmtRatio(total);
+    els.resPctTotal.textContent = fmtPct(total);
+
+    // Stacked bar: scale segments so B+C+D never overflow the track visually.
+    var scale = total > 1 ? 1 / total : 1;
+    els.segB.style.width = (ratioB * 100 * scale) + '%';
+    els.segC.style.width = (ratioC * 100 * scale) + '%';
+    els.segD.style.width = (ratioD * 100 * scale) + '%';
+
+    if (areaA === 0) {
+      els.barNote.textContent = (areaB + areaC + areaD) > 0
+        ? 'Enter a length and width for Area A to see the ratios.'
+        : '';
+      els.barNote.classList.remove('over');
+    } else if (total > 1) {
+      els.barNote.textContent = 'Targets exceed Area A by ' + fmtPct(total - 1) + ' — bar shown at full scale.';
+      els.barNote.classList.add('over');
+    } else if (total > 0) {
+      els.barNote.textContent = fmtPct(1 - total) + ' of Area A remains unaccounted for.';
+      els.barNote.classList.remove('over');
+    } else {
+      els.barNote.textContent = '';
+      els.barNote.classList.remove('over');
+    }
+  }
+
+  function refresh() {
+    relabelExtras();
+    updateAddButton();
+    calculate();
+  }
+
+  // --- Events: addEventListener only, no inline handlers (the iOS fix) ---
+  els.addBtn.addEventListener('click', function () {
+    if (extraCards().length >= 2) return;
+    var card = createExtraCard();
+    els.extraList.appendChild(card);
+    refresh();
+    var first = card.querySelector('input');
+    if (first) first.focus({ preventScroll: false });
+  });
+
+  els.extraList.addEventListener('click', function (event) {
+    var btn = event.target.closest ? event.target.closest('.remove-btn') : null;
+    if (!btn) return;
+    var card = btn.closest('.extra-card');
+    if (card) card.remove();
+    refresh();
+    els.addBtn.focus({ preventScroll: true });
+  });
+
+  els.clearBtn.addEventListener('click', function () {
+    [els.aLen, els.aWid, els.bLen, els.bWid].forEach(function (i) { i.value = ''; });
+    els.extraList.innerHTML = '';
+    refresh();
+    els.aLen.focus({ preventScroll: true });
+  });
+
+  // iOS number fields don't always fire `input` reliably, so listen for both.
+  document.getElementById('app').addEventListener('input', calculate);
+  document.getElementById('app').addEventListener('change', calculate);
+
+  calculate();
+})();
+</script>
+</body>
+</html>
