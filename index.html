@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Area Ratio Calculator</title>
-<meta name="description" content="Work out how much of Area A is taken up by Areas B, C, and D." />
+<meta name="description" content="Work out how much of Area A is taken up by Areas B, C, D, E, and F." />
 <meta name="color-scheme" content="dark" />
 <meta name="theme-color" content="#1f2937" />
 <!-- Home-screen web app (iOS + Android) -->
@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Area Ratio" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <link rel="manifest" href="area-ratio-manifest.json" />
+<link rel="apple-touch-icon" sizes="180x180" href="area-ratio-icon-180.png" />
 <link rel="icon" href="data:," />
 <style>
   :root{
@@ -30,6 +31,8 @@
     --accent-ink:#062a33;
     --c-color:#34d399;
     --d-color:#fbbf24;
+    --e-color:#a78bfa;
+    --f-color:#f472b6;
     --danger:#f87171;
     --danger-dim:rgba(248,113,113,.12);
     --radius:10px;
@@ -85,6 +88,8 @@
   .letter.b{ color:var(--accent); }
   .letter.c{ color:var(--c-color); }
   .letter.d{ color:var(--d-color); }
+  .letter.e{ color:var(--e-color); }
+  .letter.f{ color:var(--f-color); }
   .card-area{
     font-variant-numeric:tabular-nums; font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size:.85rem; color:var(--muted); white-space:nowrap;
@@ -165,10 +170,12 @@
   .bar .seg-b{ background:var(--accent); }
   .bar .seg-c{ background:var(--c-color); }
   .bar .seg-d{ background:var(--d-color); }
+  .bar .seg-e{ background:var(--e-color); }
+  .bar .seg-f{ background:var(--f-color); }
   .bar-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:.78rem; color:var(--muted); }
   .bar-legend span{ display:inline-flex; align-items:center; gap:6px; }
   .dot{ width:9px; height:9px; border-radius:3px; display:inline-block; }
-  .dot.b{ background:var(--accent);} .dot.c{ background:var(--c-color);} .dot.d{ background:var(--d-color);}
+  .dot.b{ background:var(--accent);} .dot.c{ background:var(--c-color);} .dot.d{ background:var(--d-color);} .dot.e{ background:var(--e-color);} .dot.f{ background:var(--f-color);}
   .bar-note{ font-size:.8rem; color:var(--muted); margin-top:6px; min-height:1.2em; }
   .bar-note.over{ color:var(--d-color); }
 
@@ -200,7 +207,7 @@
 <main class="app" id="app">
 
   <header>
-    <h1>How much of A is B, C, and D?</h1>
+    <h1>How much of A is B, C, D, E, and F?</h1>
     <p class="subtitle">Enter the base area <strong>A</strong>, then each target. Ratios update as you type.</p>
   </header>
 
@@ -242,7 +249,7 @@
     </div>
   </section>
 
-  <!-- Extra targets C / D are inserted here -->
+  <!-- Extra targets C / D / E / F are inserted here -->
   <div class="extra-list" id="extra-list"></div>
 
   <button type="button" class="add-btn" id="add-btn">
@@ -262,11 +269,15 @@
         <div class="seg seg-b" id="seg-b" style="width:0%"></div>
         <div class="seg seg-c" id="seg-c" style="width:0%"></div>
         <div class="seg seg-d" id="seg-d" style="width:0%"></div>
+        <div class="seg seg-e" id="seg-e" style="width:0%"></div>
+        <div class="seg seg-f" id="seg-f" style="width:0%"></div>
       </div>
       <div class="bar-legend">
         <span><i class="dot b"></i>B</span>
         <span id="legend-c" class="hidden"><i class="dot c"></i>C</span>
         <span id="legend-d" class="hidden"><i class="dot d"></i>D</span>
+        <span id="legend-e" class="hidden"><i class="dot e"></i>E</span>
+        <span id="legend-f" class="hidden"><i class="dot f"></i>F</span>
         <span style="margin-left:auto">of A filled</span>
       </div>
       <p class="bar-note" id="bar-note"></p>
@@ -288,6 +299,14 @@
       <span class="result-label"><i class="dot d"></i>Target D</span>
       <span class="result-nums"><span class="result-value" id="res-ratio-d">0.0000</span><span class="result-pct" id="res-pct-d">0.0%</span></span>
     </div>
+    <div class="result-row hidden" id="res-row-e">
+      <span class="result-label"><i class="dot e"></i>Target E</span>
+      <span class="result-nums"><span class="result-value" id="res-ratio-e">0.0000</span><span class="result-pct" id="res-pct-e">0.0%</span></span>
+    </div>
+    <div class="result-row hidden" id="res-row-f">
+      <span class="result-label"><i class="dot f"></i>Target F</span>
+      <span class="result-nums"><span class="result-value" id="res-ratio-f">0.0000</span><span class="result-pct" id="res-pct-f">0.0%</span></span>
+    </div>
     <div class="result-row total">
       <span class="result-label">Cumulative ratio</span>
       <span class="result-nums" aria-live="polite"><span class="result-value" id="res-cumulative">0.0000</span><span class="result-pct" id="res-pct-total">0.0%</span></span>
@@ -302,7 +321,7 @@
 (function () {
   'use strict';
 
-  var LETTERS = ['C', 'D'];
+  var LETTERS = ['C', 'D', 'E', 'F'];
 
   var els = {
     aLen: document.getElementById('a-len'),
@@ -324,13 +343,23 @@
     resRowD: document.getElementById('res-row-d'),
     resRatioD: document.getElementById('res-ratio-d'),
     resPctD: document.getElementById('res-pct-d'),
+    resRowE: document.getElementById('res-row-e'),
+    resRatioE: document.getElementById('res-ratio-e'),
+    resPctE: document.getElementById('res-pct-e'),
+    resRowF: document.getElementById('res-row-f'),
+    resRatioF: document.getElementById('res-ratio-f'),
+    resPctF: document.getElementById('res-pct-f'),
     resCumulative: document.getElementById('res-cumulative'),
     resPctTotal: document.getElementById('res-pct-total'),
     segB: document.getElementById('seg-b'),
     segC: document.getElementById('seg-c'),
     segD: document.getElementById('seg-d'),
+    segE: document.getElementById('seg-e'),
+    segF: document.getElementById('seg-f'),
     legendC: document.getElementById('legend-c'),
     legendD: document.getElementById('legend-d'),
+    legendE: document.getElementById('legend-e'),
+    legendF: document.getElementById('legend-f'),
     barNote: document.getElementById('bar-note')
   };
 
@@ -351,7 +380,7 @@
   function fmtPct(r) { return (r * 100).toFixed(1) + '%'; }
 
   // Extra targets are simply the cards currently in the list, in order:
-  // the first is always C, the second always D. Removing C promotes D.
+  // the first is always C, then D, E, F. Removing one promotes the rest.
   function extraCards() {
     return Array.prototype.slice.call(els.extraList.querySelectorAll('.extra-card'));
   }
@@ -380,14 +409,12 @@
 
   function updateAddButton() {
     var count = extraCards().length;
-    if (count === 0) {
-      els.addLabel.textContent = 'Add target area C';
-      els.addBtn.disabled = false;
-    } else if (count === 1) {
-      els.addLabel.textContent = 'Add target area D';
+    var next = ['C', 'D', 'E', 'F'][count];
+    if (count < 4) {
+      els.addLabel.textContent = 'Add target area ' + next;
       els.addBtn.disabled = false;
     } else {
-      els.addLabel.textContent = 'Areas C and D added';
+      els.addLabel.textContent = 'Areas C, D, E and F added';
       els.addBtn.disabled = true;
     }
   }
@@ -422,17 +449,22 @@
     var cards = extraCards();
     var areaC = cards.length > 0 ? extraArea(cards[0]) : 0;
     var areaD = cards.length > 1 ? extraArea(cards[1]) : 0;
+    var areaE = cards.length > 2 ? extraArea(cards[2]) : 0;
+    var areaF = cards.length > 3 ? extraArea(cards[3]) : 0;
+    var areas = [areaC, areaD, areaE, areaF];
 
     els.areaALive.textContent = fmtArea(areaA);
     els.areaBLive.textContent = fmtArea(areaB);
     cards.forEach(function (card, i) {
-      card.querySelector('.extra-area-live').textContent = fmtArea(i === 0 ? areaC : areaD);
+      card.querySelector('.extra-area-live').textContent = fmtArea(areas[i]);
     });
 
     var ratioB = areaA > 0 ? areaB / areaA : 0;
     var ratioC = areaA > 0 ? areaC / areaA : 0;
     var ratioD = areaA > 0 ? areaD / areaA : 0;
-    var total = ratioB + ratioC + ratioD;
+    var ratioE = areaA > 0 ? areaE / areaA : 0;
+    var ratioF = areaA > 0 ? areaF / areaA : 0;
+    var total = ratioB + ratioC + ratioD + ratioE + ratioF;
 
     els.resAreaA.textContent = fmtArea(areaA);
     els.resRatioB.textContent = fmtRatio(ratioB);
@@ -456,18 +488,38 @@
       els.resRowD.classList.add('hidden');
       els.legendD.classList.add('hidden');
     }
+    if (cards.length > 2) {
+      els.resRowE.classList.remove('hidden');
+      els.legendE.classList.remove('hidden');
+      els.resRatioE.textContent = fmtRatio(ratioE);
+      els.resPctE.textContent = fmtPct(ratioE);
+    } else {
+      els.resRowE.classList.add('hidden');
+      els.legendE.classList.add('hidden');
+    }
+    if (cards.length > 3) {
+      els.resRowF.classList.remove('hidden');
+      els.legendF.classList.remove('hidden');
+      els.resRatioF.textContent = fmtRatio(ratioF);
+      els.resPctF.textContent = fmtPct(ratioF);
+    } else {
+      els.resRowF.classList.add('hidden');
+      els.legendF.classList.add('hidden');
+    }
 
     els.resCumulative.textContent = fmtRatio(total);
     els.resPctTotal.textContent = fmtPct(total);
 
-    // Stacked bar: scale segments so B+C+D never overflow the track visually.
+    // Stacked bar: scale segments so B+C+D+E+F never overflow the track visually.
     var scale = total > 1 ? 1 / total : 1;
     els.segB.style.width = (ratioB * 100 * scale) + '%';
     els.segC.style.width = (ratioC * 100 * scale) + '%';
     els.segD.style.width = (ratioD * 100 * scale) + '%';
+    els.segE.style.width = (ratioE * 100 * scale) + '%';
+    els.segF.style.width = (ratioF * 100 * scale) + '%';
 
     if (areaA === 0) {
-      els.barNote.textContent = (areaB + areaC + areaD) > 0
+      els.barNote.textContent = (areaB + areaC + areaD + areaE + areaF) > 0
         ? 'Enter a length and width for Area A to see the ratios.'
         : '';
       els.barNote.classList.remove('over');
@@ -491,7 +543,7 @@
 
   // --- Events: addEventListener only, no inline handlers (the iOS fix) ---
   els.addBtn.addEventListener('click', function () {
-    if (extraCards().length >= 2) return;
+    if (extraCards().length >= 4) return;
     var card = createExtraCard();
     els.extraList.appendChild(card);
     refresh();
