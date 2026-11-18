@@ -95,6 +95,26 @@
     font-size:.85rem; color:var(--muted); white-space:nowrap;
   }
   .card-area b{ color:var(--text); font-weight:600; }
+  .head-right{ display:flex; align-items:center; gap:4px; }
+
+  /* Count stepper: "×N" with up/down arrows, top-right of each area box */
+  .counter{ display:inline-flex; align-items:center; gap:4px; }
+  .count-value{
+    font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric:tabular-nums;
+    font-size:.9rem; font-weight:700; color:var(--accent); min-width:1.8em; text-align:right; padding-right:0;
+  }
+  .count-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:36px; min-height:44px; padding:0;
+    background:transparent; border:1px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--muted); cursor:pointer;
+  }
+  .count-btn svg{ width:16px; height:16px; fill:currentColor; }
+  .count-btn:hover:not(:disabled), .count-btn:active:not(:disabled){ color:var(--accent); border-color:var(--accent); background:var(--accent-dim); }
+  .count-btn:disabled{ opacity:.35; cursor:default; }
+  .card-head{ flex-wrap:wrap; gap:6px 12px; }
+  .head-right{ margin-left:auto; }
+  @media (max-width:420px){ .remove-text, .title-suffix{ display:none; } }
 
   .inputs-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .field{ display:flex; flex-direction:column; gap:6px; min-width:0; }
@@ -214,8 +234,11 @@
   <!-- Area A -->
   <section class="card" aria-labelledby="title-a">
     <div class="card-head">
-      <div class="card-title is-base" id="title-a"><span class="letter base">A</span> Area A · Base</div>
-      <div class="card-area" aria-live="off">= <b id="area-a-live">0</b></div>
+      <div class="card-title is-base" id="title-a"><span class="letter base">A</span> Area A<span class="title-suffix"> · Base</span></div>
+      <div class="head-right">
+        <div class="card-area" aria-live="off">= <b id="area-a-live">0</b></div>
+        <span class="counter-slot" data-name="Area A"></span>
+      </div>
     </div>
     <div class="inputs-row">
       <div class="field">
@@ -233,8 +256,11 @@
   <!-- Area B -->
   <section class="card" aria-labelledby="title-b">
     <div class="card-head">
-      <div class="card-title" id="title-b"><span class="letter b">B</span> Area B · Target</div>
-      <div class="card-area">= <b id="area-b-live">0</b></div>
+      <div class="card-title" id="title-b"><span class="letter b">B</span> Area B<span class="title-suffix"> · Target</span></div>
+      <div class="head-right">
+        <div class="card-area">= <b id="area-b-live">0</b></div>
+        <span class="counter-slot" data-name="Area B"></span>
+      </div>
     </div>
     <div class="inputs-row">
       <div class="field">
@@ -371,6 +397,53 @@
   function areaOf(lenInput, widInput) {
     return num(lenInput) * num(widInput);
   }
+
+  // --- Counts: each area box carries a whole-number count ("×N"), stored on the card ---
+  var UP_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14l5-5 5 5z"/></svg>';
+  var DOWN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>';
+
+  function makeCounter(slot) {
+    var name = slot.getAttribute('data-name');
+    slot.outerHTML =
+      '<span class="counter">' +
+        '<span class="count-value" aria-live="polite">×0</span>' +
+        '<button type="button" class="count-btn count-down" aria-label="Fewer of ' + name + '" disabled>' + DOWN_SVG + '</button>' +
+        '<button type="button" class="count-btn count-up" aria-label="More of ' + name + '" disabled>' + UP_SVG + '</button>' +
+      '</span>';
+  }
+  function cardInputs(card) { return card.querySelectorAll('.inputs-row input'); }
+  // A field part-way through being typed (e.g. "." before "5") reports value "" with
+  // validity.badInput; count that as filled so the count is not wiped mid-keystroke.
+  function isEmpty(input) {
+    return input.value.trim() === '' && !(input.validity && input.validity.badInput);
+  }
+  function bothFilled(card) {
+    var inputs = cardInputs(card);
+    return !isEmpty(inputs[0]) && !isEmpty(inputs[1]);
+  }
+  /** Both fields hold a real, non-zero size. */
+  function hasArea(card) {
+    var inputs = cardInputs(card);
+    return num(inputs[0]) > 0 && num(inputs[1]) > 0;
+  }
+  function countOf(card) { return parseInt(card.getAttribute('data-count') || '0', 10) || 0; }
+  function setCount(card, n) {
+    n = Math.max(0, Math.floor(n));
+    card.setAttribute('data-count', String(n));
+    card.querySelector('.count-value').textContent = '×' + n;
+    card.querySelector('.count-down').disabled = n === 0;
+    card.querySelector('.count-up').disabled = !hasArea(card);
+  }
+  // Typing: 0 jumps to 1 once both fields hold a non-zero size; emptying either field drops it
+  // to 0. A count above 1 is kept while a field passes through "0" (e.g. typing "0.5").
+  function syncCountToFields(card) {
+    if (!bothFilled(card)) setCount(card, 0);
+    else if (countOf(card) === 0 && hasArea(card)) setCount(card, 1);
+    else setCount(card, countOf(card));
+  }
+  function areaCards() {
+    return Array.prototype.slice.call(document.querySelectorAll('#app > .card, #extra-list > .card'));
+  }
   function fmtArea(n) {
     if (!n) return '0';
     var rounded = Math.round(n * 10000) / 10000;
@@ -385,8 +458,8 @@
     return Array.prototype.slice.call(els.extraList.querySelectorAll('.extra-card'));
   }
   function extraArea(card) {
-    var inputs = card.querySelectorAll('input');
-    return areaOf(inputs[0], inputs[1]);
+    var inputs = cardInputs(card);
+    return areaOf(inputs[0], inputs[1]) * countOf(card);
   }
 
   function relabelExtras() {
@@ -396,9 +469,11 @@
       card.setAttribute('data-letter', letter);
       card.querySelector('.letter').textContent = letter;
       card.querySelector('.letter').className = 'letter ' + lower;
-      card.querySelector('.card-title-text').textContent = 'Area ' + letter + ' · Target';
+      card.querySelector('.card-title-text').textContent = 'Area ' + letter;
       var labels = card.querySelectorAll('label');
-      var inputs = card.querySelectorAll('input');
+      var inputs = cardInputs(card);
+      card.querySelector('.count-down').setAttribute('aria-label', 'Fewer of Area ' + letter);
+      card.querySelector('.count-up').setAttribute('aria-label', 'More of Area ' + letter);
       inputs[0].id = 'extra-' + i + '-len';
       inputs[1].id = 'extra-' + i + '-wid';
       labels[0].setAttribute('for', inputs[0].id);
@@ -424,12 +499,13 @@
     section.className = 'card extra-card';
     section.innerHTML =
       '<div class="card-head">' +
-        '<div class="card-title"><span class="letter c">C</span><span class="card-title-text">Area C · Target</span></div>' +
-        '<div style="display:flex; align-items:center; gap:2px;">' +
+        '<div class="card-title"><span class="letter c">C</span><span><span class="card-title-text">Area C</span><span class="title-suffix"> · Target</span></span></div>' +
+        '<div class="head-right">' +
           '<div class="card-area">= <b class="extra-area-live">0</b></div>' +
+          '<span class="counter-slot" data-name="Area C"></span>' +
           '<button type="button" class="remove-btn" aria-label="Remove Area C">' +
             '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>' +
-            '<span>Remove</span>' +
+            '<span class="remove-text">Remove</span>' +
           '</button>' +
         '</div>' +
       '</div>' +
@@ -440,24 +516,33 @@
         '<div class="field"><label>Width</label>' +
           '<input type="number" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" /></div>' +
       '</div>';
+    makeCounter(section.querySelector('.counter-slot'));
+    setCount(section, 0);
     return section;
   }
 
   function calculate() {
-    var areaA = areaOf(els.aLen, els.aWid);
-    var areaB = areaOf(els.bLen, els.bWid);
+    // Ratios are measured against ONE A (unchanged math); targets are scaled by their counts.
+    // Percentages, the bar and the remainder are measured against ALL of A (countA copies).
+    var cardA = els.aLen.closest('.card');
+    var cardB = els.bLen.closest('.card');
+    var countA = countOf(cardA);
+    var areaA = countA > 0 ? areaOf(els.aLen, els.aWid) : 0;
+    var areaB = areaOf(els.bLen, els.bWid) * countOf(cardB);
     var cards = extraCards();
     var areaC = cards.length > 0 ? extraArea(cards[0]) : 0;
     var areaD = cards.length > 1 ? extraArea(cards[1]) : 0;
     var areaE = cards.length > 2 ? extraArea(cards[2]) : 0;
     var areaF = cards.length > 3 ? extraArea(cards[3]) : 0;
-    var areas = [areaC, areaD, areaE, areaF];
 
-    els.areaALive.textContent = fmtArea(areaA);
-    els.areaBLive.textContent = fmtArea(areaB);
-    cards.forEach(function (card, i) {
-      card.querySelector('.extra-area-live').textContent = fmtArea(areas[i]);
+    // Each box shows the area of ONE item, as typed; counts are applied in the results.
+    els.areaALive.textContent = fmtArea(areaOf(els.aLen, els.aWid));
+    els.areaBLive.textContent = fmtArea(areaOf(els.bLen, els.bWid));
+    cards.forEach(function (card) {
+      var inputs = cardInputs(card);
+      card.querySelector('.extra-area-live').textContent = fmtArea(areaOf(inputs[0], inputs[1]));
     });
+    var share = function (r) { return countA > 0 ? r / countA : 0; };
 
     var ratioB = areaA > 0 ? areaB / areaA : 0;
     var ratioC = areaA > 0 ? areaC / areaA : 0;
@@ -466,15 +551,15 @@
     var ratioF = areaA > 0 ? areaF / areaA : 0;
     var total = ratioB + ratioC + ratioD + ratioE + ratioF;
 
-    els.resAreaA.textContent = fmtArea(areaA);
+    els.resAreaA.textContent = fmtArea(areaA * countA);
     els.resRatioB.textContent = fmtRatio(ratioB);
-    els.resPctB.textContent = fmtPct(ratioB);
+    els.resPctB.textContent = fmtPct(share(ratioB));
 
     if (cards.length > 0) {
       els.resRowC.classList.remove('hidden');
       els.legendC.classList.remove('hidden');
       els.resRatioC.textContent = fmtRatio(ratioC);
-      els.resPctC.textContent = fmtPct(ratioC);
+      els.resPctC.textContent = fmtPct(share(ratioC));
     } else {
       els.resRowC.classList.add('hidden');
       els.legendC.classList.add('hidden');
@@ -483,7 +568,7 @@
       els.resRowD.classList.remove('hidden');
       els.legendD.classList.remove('hidden');
       els.resRatioD.textContent = fmtRatio(ratioD);
-      els.resPctD.textContent = fmtPct(ratioD);
+      els.resPctD.textContent = fmtPct(share(ratioD));
     } else {
       els.resRowD.classList.add('hidden');
       els.legendD.classList.add('hidden');
@@ -492,7 +577,7 @@
       els.resRowE.classList.remove('hidden');
       els.legendE.classList.remove('hidden');
       els.resRatioE.textContent = fmtRatio(ratioE);
-      els.resPctE.textContent = fmtPct(ratioE);
+      els.resPctE.textContent = fmtPct(share(ratioE));
     } else {
       els.resRowE.classList.add('hidden');
       els.legendE.classList.add('hidden');
@@ -501,33 +586,36 @@
       els.resRowF.classList.remove('hidden');
       els.legendF.classList.remove('hidden');
       els.resRatioF.textContent = fmtRatio(ratioF);
-      els.resPctF.textContent = fmtPct(ratioF);
+      els.resPctF.textContent = fmtPct(share(ratioF));
     } else {
       els.resRowF.classList.add('hidden');
       els.legendF.classList.add('hidden');
     }
 
     els.resCumulative.textContent = fmtRatio(total);
-    els.resPctTotal.textContent = fmtPct(total);
+    els.resPctTotal.textContent = fmtPct(share(total));
 
-    // Stacked bar: scale segments so B+C+D+E+F never overflow the track visually.
-    var scale = total > 1 ? 1 / total : 1;
-    els.segB.style.width = (ratioB * 100 * scale) + '%';
-    els.segC.style.width = (ratioC * 100 * scale) + '%';
-    els.segD.style.width = (ratioD * 100 * scale) + '%';
-    els.segE.style.width = (ratioE * 100 * scale) + '%';
-    els.segF.style.width = (ratioF * 100 * scale) + '%';
+    // Stacked bar shows how much of ALL of A is filled; scaled so it never overflows the track.
+    var filled = share(total);
+    var scale = filled > 1 ? 1 / filled : 1;
+    els.segB.style.width = (share(ratioB) * 100 * scale) + '%';
+    els.segC.style.width = (share(ratioC) * 100 * scale) + '%';
+    els.segD.style.width = (share(ratioD) * 100 * scale) + '%';
+    els.segE.style.width = (share(ratioE) * 100 * scale) + '%';
+    els.segF.style.width = (share(ratioF) * 100 * scale) + '%';
 
     if (areaA === 0) {
       els.barNote.textContent = (areaB + areaC + areaD + areaE + areaF) > 0
         ? 'Enter a length and width for Area A to see the ratios.'
         : '';
       els.barNote.classList.remove('over');
-    } else if (total > 1) {
-      els.barNote.textContent = 'Targets exceed Area A by ' + fmtPct(total - 1) + ' — bar shown at full scale.';
+    } else if (total - countA > 1e-9) { // tolerance: e.g. 0.1 + 0.2 + 0.7 must count as an exact fill
+      els.barNote.textContent = 'Targets exceed Area A by ' + fmtRatio(total - countA) + ' / ' + fmtRatio(countA) +
+        ' (' + fmtPct(filled - 1) + ') — bar shown at full scale.';
       els.barNote.classList.add('over');
     } else if (total > 0) {
-      els.barNote.textContent = fmtPct(1 - total) + ' of Area A remains unaccounted for.';
+      els.barNote.textContent = fmtRatio(Math.max(0, countA - total)) + ' / ' + fmtRatio(countA) +
+        ' remaining (' + fmtPct(Math.max(0, 1 - filled)) + ' of Area A).';
       els.barNote.classList.remove('over');
     } else {
       els.barNote.textContent = '';
@@ -560,17 +648,46 @@
     els.addBtn.focus({ preventScroll: true });
   });
 
+  // Count arrows (A, B and the extra cards all share this handler).
+  document.getElementById('app').addEventListener('click', function (event) {
+    var btn = event.target.closest ? event.target.closest('.count-btn') : null;
+    if (!btn || btn.disabled) return;
+    var card = btn.closest('.card');
+    var next = countOf(card) + (btn.classList.contains('count-up') ? 1 : -1);
+    if (next <= 0) {
+      // Lowering to zero by hand clears that box's length and width.
+      var inputs = cardInputs(card);
+      inputs[0].value = '';
+      inputs[1].value = '';
+      setCount(card, 0);
+      // Keyboard users (Enter/Space, detail 0) keep focus now the button disables; a tap or
+      // click does not, so phones don't pop the on-screen keyboard over the results.
+      if (event.detail === 0) inputs[0].focus({ preventScroll: true });
+    } else {
+      setCount(card, next);
+    }
+    calculate();
+  });
+
   els.clearBtn.addEventListener('click', function () {
     [els.aLen, els.aWid, els.bLen, els.bWid].forEach(function (i) { i.value = ''; });
     els.extraList.innerHTML = '';
+    areaCards().forEach(function (card) { setCount(card, 0); });
     refresh();
     els.aLen.focus({ preventScroll: true });
   });
 
   // iOS number fields don't always fire `input` reliably, so listen for both.
-  document.getElementById('app').addEventListener('input', calculate);
-  document.getElementById('app').addEventListener('change', calculate);
+  function onFieldEdit(event) {
+    var card = event.target.closest ? event.target.closest('.card') : null;
+    if (card && event.target.matches('.inputs-row input')) syncCountToFields(card);
+    calculate();
+  }
+  document.getElementById('app').addEventListener('input', onFieldEdit);
+  document.getElementById('app').addEventListener('change', onFieldEdit);
 
+  Array.prototype.slice.call(document.querySelectorAll('#app > .card .counter-slot')).forEach(makeCounter);
+  areaCards().forEach(function (card) { setCount(card, 0); syncCountToFields(card); });
   calculate();
 })();
 </script>
