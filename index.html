@@ -217,6 +217,42 @@
   .result-row.total .result-pct{ font-size:.95rem; color:var(--accent); }
   .hidden{ display:none !important; }
 
+  /* Simple calculator. Deliberately not a .card: the area code treats every "#app > .card" as an area box. */
+  .calc{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; box-shadow:0 6px 16px rgba(0,0,0,.22);
+  }
+  .calc-title{ font-size:.82rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 14px; }
+  .calc-ops{ display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin:12px 0; }
+  .op-btn{
+    min-height:44px; padding:0;
+    background:var(--bg-deep); border:1px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--muted); font-size:1.25rem; font-weight:700; cursor:pointer;
+  }
+  .op-btn:hover, .op-btn:active{ color:var(--accent); border-color:var(--accent); }
+  .op-btn[aria-pressed="true"]{ background:var(--accent); border-color:transparent; color:var(--accent-ink); }
+  .calc-result{
+    display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+    margin-top:4px; padding:14px 16px;
+    background:var(--bg-deep); border:2px solid var(--border-soft); border-radius:var(--radius-sm);
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .calc-result-label{ font-size:.92rem; color:var(--muted); }
+  .calc-result-value{
+    font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric:tabular-nums;
+    font-size:1.55rem; font-weight:700; color:var(--accent); overflow-wrap:anywhere; text-align:right;
+  }
+  .calc-result.is-error{ border-color:var(--danger); box-shadow:0 0 0 3px var(--danger-dim); }
+  .calc-result.is-error .calc-result-value{ color:var(--danger); }
+  .calc-result.shake{ animation:shake .45s ease-in-out; }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    15%,55%{ transform:translateX(-8px); }
+    35%,75%{ transform:translateX(8px); }
+    90%{ transform:translateX(-3px); }
+  }
+  @media (prefers-reduced-motion: reduce){ .calc-result.shake{ animation:none; } }
+
   .hint{
     font-size:.83rem; color:var(--muted-2); line-height:1.55; margin:2px 2px 0;
   }
@@ -336,6 +372,31 @@
     <div class="result-row total">
       <span class="result-label">Cumulative ratio</span>
       <span class="result-nums" aria-live="polite"><span class="result-value" id="res-cumulative">0.0000</span><span class="result-pct" id="res-pct-total">0.0%</span></span>
+    </div>
+  </section>
+
+  <!-- Simple calculator -->
+  <section class="calc" aria-labelledby="calc-title">
+    <h2 class="calc-title" id="calc-title">Calculator</h2>
+    <div class="calc-inputs inputs-grid">
+      <div class="field">
+        <label for="calc-x">First number</label>
+        <input type="number" id="calc-x" inputmode="decimal" step="any" placeholder="0" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="calc-y">Second number</label>
+        <input type="number" id="calc-y" inputmode="decimal" step="any" placeholder="0" autocomplete="off" />
+      </div>
+    </div>
+    <div class="calc-ops" role="group" aria-label="Operation">
+      <button type="button" class="op-btn" data-op="add" aria-label="Add" aria-pressed="true">+</button>
+      <button type="button" class="op-btn" data-op="sub" aria-label="Subtract" aria-pressed="false">−</button>
+      <button type="button" class="op-btn" data-op="mul" aria-label="Multiply" aria-pressed="false">×</button>
+      <button type="button" class="op-btn" data-op="div" aria-label="Divide" aria-pressed="false">÷</button>
+    </div>
+    <div class="calc-result" id="calc-result">
+      <span class="calc-result-label">Result</span>
+      <span class="calc-result-value" id="calc-value" aria-live="polite">0</span>
     </div>
   </section>
 
@@ -689,6 +750,79 @@
   Array.prototype.slice.call(document.querySelectorAll('#app > .card .counter-slot')).forEach(makeCounter);
   areaCards().forEach(function (card) { setCount(card, 0); syncCountToFields(card); });
   calculate();
+})();
+
+// --- Simple calculator: + − × ÷. A negative result (or ÷ 0) is never shown; the box turns red and shakes. ---
+(function () {
+  'use strict';
+
+  var x = document.getElementById('calc-x');
+  var y = document.getElementById('calc-y');
+  var box = document.getElementById('calc-result');
+  var value = document.getElementById('calc-value');
+  var opButtons = Array.prototype.slice.call(document.querySelectorAll('.op-btn'));
+  var op = 'add';
+  var inError = false;
+
+  function read(input) {
+    var v = parseFloat(input.value);
+    return isNaN(v) ? 0 : v;
+  }
+  function fmt(n) {
+    var rounded = Math.round(n * 10000) / 10000; // also tidies 0.1 + 0.2 to 0.3
+    return rounded.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  }
+  function shake() {
+    box.classList.remove('shake');
+    void box.offsetWidth; // restart the animation if it is already mid-shake
+    box.classList.add('shake');
+  }
+
+  function filled(input) { return input.value.trim() !== '' || (input.validity && input.validity.badInput); }
+
+  function compute() {
+    if (!filled(x) || !filled(y)) { // nothing to judge until both numbers are in
+      value.textContent = '0';
+      value.removeAttribute('aria-label');
+      box.classList.remove('is-error', 'shake');
+      inError = false;
+      return;
+    }
+    var a = read(x), b = read(y), result;
+    if (op === 'add') result = a + b;
+    else if (op === 'sub') result = a - b;
+    else if (op === 'mul') result = a * b;
+    else result = b === 0 ? NaN : a / b;
+
+    var rounded = Math.round(result * 10000) / 10000;
+    var bad = isNaN(result) || !isFinite(result) || rounded < 0;
+    if (bad) {
+      value.textContent = '—';
+      value.setAttribute('aria-label', isNaN(result) ? 'Error: cannot divide by zero' : 'Error: result is below zero');
+      box.classList.add('is-error');
+      if (!inError) shake(); // shake once as the error appears, not on every keystroke
+    } else {
+      value.textContent = fmt(rounded);
+      value.removeAttribute('aria-label');
+      box.classList.remove('is-error', 'shake');
+    }
+    inError = bad;
+  }
+
+  box.addEventListener('animationend', function () { box.classList.remove('shake'); });
+  [x, y].forEach(function (input) {
+    input.addEventListener('input', compute);
+    input.addEventListener('change', compute);
+  });
+  opButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      op = btn.getAttribute('data-op');
+      opButtons.forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
+      if (inError) shake(); // picking an operation that is still wrong shakes again
+      compute();
+    });
+  });
+  compute();
 })();
 </script>
 </body>
