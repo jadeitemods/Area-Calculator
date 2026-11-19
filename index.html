@@ -1,0 +1,901 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Area Ratio Calculator</title>
+<meta name="description" content="Work out how much of Area A is taken up by Areas B, C, D, E, and F." />
+<meta name="color-scheme" content="dark" />
+<meta name="theme-color" content="#1f2937" />
+<!-- Home-screen web app (iOS + Android) -->
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Area Ratio" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="manifest" href="area-ratio-manifest.json" />
+<link rel="apple-touch-icon" sizes="180x180" href="area-ratio-icon-180.png" />
+<link rel="icon" href="data:," />
+<style>
+  :root{
+    --bg:#1f2937;
+    --bg-deep:#111827;
+    --surface:#374151;
+    --surface-2:#2b3648;
+    --border:#4b5563;
+    --border-soft:#3d4a5e;
+    --text:#f9fafb;
+    --muted:#b6becb;
+    --muted-2:#9ca3af;
+    --accent:#22d3ee;
+    --accent-dim:rgba(34,211,238,.14);
+    --accent-ink:#062a33;
+    --c-color:#34d399;
+    --d-color:#fbbf24;
+    --e-color:#a78bfa;
+    --f-color:#f472b6;
+    --danger:#f87171;
+    --danger-dim:rgba(248,113,113,.12);
+    --radius:10px;
+    --radius-sm:6px;
+  }
+  *{box-sizing:border-box}
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0;
+    background:var(--bg);
+    background-image:linear-gradient(180deg,#232f42 0%, var(--bg) 220px);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height:1.5;
+    min-height:100vh;
+    padding:calc(28px + env(safe-area-inset-top)) 16px calc(36px + env(safe-area-inset-bottom));
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+  }
+  button, input{ font-family:inherit; }
+  button, [role="button"], select, summary, input:not([type="checkbox"],[type="radio"]){ min-height:2.75rem; }
+
+  .app{ width:100%; max-width:480px; display:flex; flex-direction:column; gap:16px; }
+
+  header{ padding:2px 2px 4px; }
+  h1{ font-size:1.35rem; line-height:1.25; font-weight:700; letter-spacing:-.01em; margin:0 0 6px; }
+  .subtitle{ color:var(--muted); font-size:.9rem; margin:0; }
+  .subtitle strong{ color:var(--accent); font-weight:600; }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px;
+    box-shadow:0 6px 16px rgba(0,0,0,.22);
+  }
+  .card-head{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px;
+  }
+  .card-title{
+    display:flex; align-items:center; gap:10px;
+    font-size:.82rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+  }
+  .card-title.is-base{ color:var(--accent); }
+  .letter{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:28px; height:28px; border-radius:7px; flex:0 0 28px;
+    font-size:.9rem; font-weight:800; letter-spacing:0; text-transform:none;
+    background:var(--bg-deep); color:var(--text); border:1px solid var(--border);
+  }
+  .letter.base{ background:var(--accent); color:var(--accent-ink); border-color:transparent; }
+  .letter.b{ color:var(--accent); }
+  .letter.c{ color:var(--c-color); }
+  .letter.d{ color:var(--d-color); }
+  .letter.e{ color:var(--e-color); }
+  .letter.f{ color:var(--f-color); }
+  .card-area{
+    font-variant-numeric:tabular-nums; font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:.85rem; color:var(--muted); white-space:nowrap;
+  }
+  .card-area b{ color:var(--text); font-weight:600; }
+  .head-right{ display:flex; align-items:center; gap:4px; }
+
+  /* Count stepper: "×N" with up/down arrows, top-right of each area box */
+  .counter{ display:inline-flex; align-items:center; gap:4px; }
+  .count-value{
+    font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric:tabular-nums;
+    font-size:.9rem; font-weight:700; color:var(--accent); min-width:1.8em; text-align:right; padding-right:0;
+  }
+  .count-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:36px; min-height:44px; padding:0;
+    background:transparent; border:1px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--muted); cursor:pointer;
+  }
+  .count-btn svg{ width:16px; height:16px; fill:currentColor; }
+  .count-btn:hover:not(:disabled), .count-btn:active:not(:disabled){ color:var(--accent); border-color:var(--accent); background:var(--accent-dim); }
+  .count-btn:disabled{ opacity:.35; cursor:default; }
+  .card-head{ flex-wrap:wrap; gap:6px 12px; }
+  .head-right{ margin-left:auto; }
+  @media (max-width:420px){ .remove-text, .title-suffix{ display:none; } }
+
+  .inputs-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .field{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .field label{ font-size:.78rem; font-weight:600; color:var(--muted); }
+  .field input{
+    width:100%;
+    background:var(--bg-deep);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:12px 12px;
+    border-radius:var(--radius-sm);
+    font-size:16px; /* 16px stops iOS Safari zooming on focus */
+    font-variant-numeric:tabular-nums;
+    -moz-appearance:textfield; appearance:textfield;
+  }
+  .field input::-webkit-outer-spin-button,
+  .field input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .field input::placeholder{ color:#6b7280; }
+  .field input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+
+  .times{
+    align-self:end; display:flex; align-items:center; justify-content:center;
+    color:var(--muted-2); font-size:1rem; padding-bottom:12px;
+  }
+  .inputs-row{ display:grid; grid-template-columns:1fr 18px 1fr; gap:4px; align-items:start; }
+
+  /* Remove button — 44px tap target */
+  .remove-btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    min-width:44px; min-height:44px; padding:8px 10px;
+    background:transparent; border:1px solid transparent; border-radius:var(--radius-sm);
+    color:var(--danger); font-size:.82rem; font-weight:600; cursor:pointer;
+  }
+  .remove-btn:hover, .remove-btn:active{ background:var(--danger-dim); }
+  .remove-btn svg{ width:17px; height:17px; fill:currentColor; flex:0 0 auto; }
+
+  /* Add button */
+  .add-btn{
+    width:100%; min-height:52px;
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    background:transparent; border:1.5px dashed var(--border);
+    color:var(--muted); border-radius:var(--radius);
+    font-size:.95rem; font-weight:600; cursor:pointer;
+    padding:12px 16px;
+  }
+  .add-btn:hover, .add-btn:active{ border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+  .add-btn:disabled{ opacity:.45; cursor:default; border-style:solid; }
+  .add-btn:disabled:hover{ border-color:var(--border); color:var(--muted); background:transparent; }
+  .add-btn svg{ width:18px; height:18px; fill:currentColor; flex:0 0 auto; }
+
+  .extra-list{ display:flex; flex-direction:column; gap:16px; }
+  .extra-list:empty{ display:none; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(-6px);} to{ opacity:1; transform:translateY(0);} }
+  .extra-card{ animation:rise .25s ease-out; }
+  @media (prefers-reduced-motion: reduce){ .extra-card{ animation:none; } }
+
+  /* Results */
+  .results{ background:var(--bg-deep); border:1px solid var(--border); border-radius:var(--radius); padding:18px; }
+  .results-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
+  .results-title{ font-size:.82rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .clear-btn{
+    background:none; border:none; color:var(--muted); font-size:.85rem; font-weight:600;
+    cursor:pointer; padding:10px 6px; min-height:44px;
+  }
+  .clear-btn:hover, .clear-btn:active{ color:var(--text); text-decoration:underline; }
+
+  .bar-wrap{ margin:12px 0 4px; }
+  .bar{
+    display:flex; width:100%; height:14px; border-radius:999px; overflow:hidden;
+    background:#1f2937; border:1px solid var(--border-soft);
+  }
+  .bar seg, .bar .seg{ height:100%; transition:width .25s ease; }
+  .bar .seg-b{ background:var(--accent); }
+  .bar .seg-c{ background:var(--c-color); }
+  .bar .seg-d{ background:var(--d-color); }
+  .bar .seg-e{ background:var(--e-color); }
+  .bar .seg-f{ background:var(--f-color); }
+  .bar-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:.78rem; color:var(--muted); }
+  .bar-legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .dot{ width:9px; height:9px; border-radius:3px; display:inline-block; }
+  .dot.b{ background:var(--accent);} .dot.c{ background:var(--c-color);} .dot.d{ background:var(--d-color);} .dot.e{ background:var(--e-color);} .dot.f{ background:var(--f-color);}
+  .bar-note{ font-size:.8rem; color:var(--muted); margin-top:6px; min-height:1.2em; }
+  .bar-note.over{ color:var(--d-color); }
+
+  .result-row{
+    display:flex; justify-content:space-between; align-items:baseline; gap:14px;
+    padding:11px 0; border-bottom:1px solid var(--border-soft);
+  }
+  .result-row:last-child{ border-bottom:none; }
+  .result-label{ font-size:.92rem; color:var(--muted); display:flex; align-items:center; gap:8px; }
+  .result-nums{ text-align:right; white-space:nowrap; }
+  .result-value{
+    font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric:tabular-nums; font-size:1rem; font-weight:600; color:var(--text);
+  }
+  .result-pct{ font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:.82rem; color:var(--muted); margin-left:8px; }
+  .result-row.total{ border-top:1px solid var(--border); border-bottom:none; margin-top:4px; padding-top:14px; }
+  .result-row.total .result-label{ color:var(--text); font-weight:700; }
+  .result-row.total .result-value{ color:var(--accent); font-size:1.55rem; font-weight:700; }
+  .result-row.total .result-pct{ font-size:.95rem; color:var(--accent); }
+  .hidden{ display:none !important; }
+
+  /* Simple calculator, laid out like sums on paper. Deliberately not a .card: the area code
+     treats every "#app > .card" as an area box. */
+  .calc{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; box-shadow:0 6px 16px rgba(0,0,0,.22);
+  }
+  .calc-title{ font-size:.82rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 14px; }
+  .calc-sum{ display:grid; grid-template-columns:56px 1fr; gap:10px; align-items:stretch; }
+  .calc-sum > .calc-x, .calc-sum > .calc-y, .calc-sum > .calc-result{ grid-column:2; }
+  .calc-rule{ grid-column:1 / -1; height:3px; border-radius:2px; background:var(--bg-deep); margin:2px 0; }
+  .calc-num, .calc-result{
+    width:100%; min-height:56px; padding:10px 14px; text-align:right;
+    background:var(--bg-deep); border:2px solid var(--border-soft); border-radius:var(--radius-sm);
+    font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric:tabular-nums;
+    font-size:1.45rem; /* stays above 16px, so iOS Safari won't zoom on focus */
+  }
+  .calc-num{ color:var(--text); -moz-appearance:textfield; appearance:textfield; }
+  .calc-num::-webkit-outer-spin-button, .calc-num::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .calc-num::placeholder{ color:#6b7280; }
+  .calc-num:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+  .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  /* Operator button, and the picker that rises above it when tapped */
+  .calc-op{ position:relative; grid-column:1; }
+  .op-btn{
+    width:100%; height:100%; min-height:56px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--bg-deep); border:2px solid var(--border-soft); border-radius:var(--radius-sm);
+    color:var(--text); font-size:1.8rem; font-weight:500; line-height:1; cursor:pointer;
+  }
+  .op-btn:hover, .op-btn[aria-expanded="true"]{ border-color:var(--accent); }
+  .op-btn:focus-visible{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+  /* Before an operation is picked, the button shows all four in miniature */
+  .op-choose{ display:grid; grid-template-columns:1fr 1fr; gap:1px 7px; font-size:.95rem; font-weight:700; color:var(--muted); }
+  .op-menu{
+    position:absolute; left:0; bottom:calc(100% + 6px); z-index:5; width:100%;
+    margin:0; padding:4px; list-style:none;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm);
+    box-shadow:0 10px 24px rgba(0,0,0,.45);
+    transform-origin:bottom center; animation:menu-rise .18s ease-out;
+  }
+  .op-menu[hidden]{ display:none; }
+  @keyframes menu-rise{ from{ opacity:0; transform:translateY(8px) scaleY(.6);} to{ opacity:1; transform:none;} }
+  .op-option{
+    display:flex; align-items:center; justify-content:center; min-height:44px; border-radius:4px;
+    font-size:1.5rem; color:var(--text); cursor:pointer; user-select:none; -webkit-user-select:none;
+  }
+  .op-option:hover, .op-option:focus{ outline:none; background:var(--accent-dim); color:var(--accent); }
+  .op-option[aria-selected="true"]{ background:var(--accent); color:var(--accent-ink); }
+
+  .calc-result{ display:flex; align-items:center; justify-content:flex-end; transition:border-color .15s ease, box-shadow .15s ease; }
+  .calc-value{ font-weight:700; color:var(--accent); overflow-wrap:anywhere; }
+  .calc-result.is-idle .calc-value{ color:var(--muted-2); font-weight:500; }
+  .calc-result.is-error{ border-color:var(--danger); box-shadow:0 0 0 3px var(--danger-dim); }
+  .calc-result.is-error .calc-value{ color:var(--danger); }
+  .calc-result.shake{ animation:shake .45s ease-in-out; }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    15%,55%{ transform:translateX(-8px); }
+    35%,75%{ transform:translateX(8px); }
+    90%{ transform:translateX(-3px); }
+  }
+  @media (prefers-reduced-motion: reduce){ .calc-result.shake, .op-menu{ animation:none; } }
+
+  .hint{
+    font-size:.83rem; color:var(--muted-2); line-height:1.55; margin:2px 2px 0;
+  }
+  .hint strong{ color:var(--muted); font-weight:600; }
+</style>
+</head>
+<body>
+<main class="app" id="app">
+
+  <header>
+    <h1>How much of A is B, C, D, E, and F?</h1>
+    <p class="subtitle">Enter the base area <strong>A</strong>, then each target. Ratios update as you type.</p>
+  </header>
+
+  <!-- Area A -->
+  <section class="card" aria-labelledby="title-a">
+    <div class="card-head">
+      <div class="card-title is-base" id="title-a"><span class="letter base">A</span> Area A<span class="title-suffix"> · Base</span></div>
+      <div class="head-right">
+        <div class="card-area" aria-live="off">= <b id="area-a-live">0</b></div>
+        <span class="counter-slot" data-name="Area A"></span>
+      </div>
+    </div>
+    <div class="inputs-row">
+      <div class="field">
+        <label for="a-len">Length</label>
+        <input type="number" id="a-len" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" />
+      </div>
+      <div class="times" aria-hidden="true">×</div>
+      <div class="field">
+        <label for="a-wid">Width</label>
+        <input type="number" id="a-wid" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Area B -->
+  <section class="card" aria-labelledby="title-b">
+    <div class="card-head">
+      <div class="card-title" id="title-b"><span class="letter b">B</span> Area B<span class="title-suffix"> · Target</span></div>
+      <div class="head-right">
+        <div class="card-area">= <b id="area-b-live">0</b></div>
+        <span class="counter-slot" data-name="Area B"></span>
+      </div>
+    </div>
+    <div class="inputs-row">
+      <div class="field">
+        <label for="b-len">Length</label>
+        <input type="number" id="b-len" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" />
+      </div>
+      <div class="times" aria-hidden="true">×</div>
+      <div class="field">
+        <label for="b-wid">Width</label>
+        <input type="number" id="b-wid" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Extra targets C / D / E / F are inserted here -->
+  <div class="extra-list" id="extra-list"></div>
+
+  <button type="button" class="add-btn" id="add-btn">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+    <span id="add-btn-label">Add target area C</span>
+  </button>
+
+  <!-- Results -->
+  <section class="results" aria-labelledby="results-title">
+    <div class="results-head">
+      <div class="results-title" id="results-title">Cumulative ratios</div>
+      <button type="button" class="clear-btn" id="clear-btn">Clear all</button>
+    </div>
+
+    <div class="bar-wrap" aria-hidden="true">
+      <div class="bar">
+        <div class="seg seg-b" id="seg-b" style="width:0%"></div>
+        <div class="seg seg-c" id="seg-c" style="width:0%"></div>
+        <div class="seg seg-d" id="seg-d" style="width:0%"></div>
+        <div class="seg seg-e" id="seg-e" style="width:0%"></div>
+        <div class="seg seg-f" id="seg-f" style="width:0%"></div>
+      </div>
+      <div class="bar-legend">
+        <span><i class="dot b"></i>B</span>
+        <span id="legend-c" class="hidden"><i class="dot c"></i>C</span>
+        <span id="legend-d" class="hidden"><i class="dot d"></i>D</span>
+        <span id="legend-e" class="hidden"><i class="dot e"></i>E</span>
+        <span id="legend-f" class="hidden"><i class="dot f"></i>F</span>
+        <span style="margin-left:auto">of A filled</span>
+      </div>
+      <p class="bar-note" id="bar-note"></p>
+    </div>
+
+    <div class="result-row">
+      <span class="result-label">Area A total</span>
+      <span class="result-nums"><span class="result-value" id="res-area-a">0</span></span>
+    </div>
+    <div class="result-row">
+      <span class="result-label"><i class="dot b"></i>Target B</span>
+      <span class="result-nums"><span class="result-value" id="res-ratio-b">0.0000</span><span class="result-pct" id="res-pct-b">0.0%</span></span>
+    </div>
+    <div class="result-row hidden" id="res-row-c">
+      <span class="result-label"><i class="dot c"></i>Target C</span>
+      <span class="result-nums"><span class="result-value" id="res-ratio-c">0.0000</span><span class="result-pct" id="res-pct-c">0.0%</span></span>
+    </div>
+    <div class="result-row hidden" id="res-row-d">
+      <span class="result-label"><i class="dot d"></i>Target D</span>
+      <span class="result-nums"><span class="result-value" id="res-ratio-d">0.0000</span><span class="result-pct" id="res-pct-d">0.0%</span></span>
+    </div>
+    <div class="result-row hidden" id="res-row-e">
+      <span class="result-label"><i class="dot e"></i>Target E</span>
+      <span class="result-nums"><span class="result-value" id="res-ratio-e">0.0000</span><span class="result-pct" id="res-pct-e">0.0%</span></span>
+    </div>
+    <div class="result-row hidden" id="res-row-f">
+      <span class="result-label"><i class="dot f"></i>Target F</span>
+      <span class="result-nums"><span class="result-value" id="res-ratio-f">0.0000</span><span class="result-pct" id="res-pct-f">0.0%</span></span>
+    </div>
+    <div class="result-row total">
+      <span class="result-label">Cumulative ratio</span>
+      <span class="result-nums" aria-live="polite"><span class="result-value" id="res-cumulative">0.0000</span><span class="result-pct" id="res-pct-total">0.0%</span></span>
+    </div>
+  </section>
+
+  <!-- Simple calculator -->
+  <section class="calc" aria-labelledby="calc-title">
+    <h2 class="calc-title" id="calc-title">Calculator</h2>
+    <div class="calc-sum">
+      <label for="calc-x" class="sr-only">First number</label>
+      <input type="number" id="calc-x" class="calc-num calc-x" inputmode="decimal" step="any" placeholder="0" autocomplete="off" />
+
+      <div class="calc-op">
+        <ul class="op-menu" id="op-menu" role="listbox" aria-label="Operation" hidden>
+          <li class="op-option" role="option" tabindex="-1" data-op="add" data-sym="+" aria-label="Add" aria-selected="false">+</li>
+          <li class="op-option" role="option" tabindex="-1" data-op="sub" data-sym="−" aria-label="Subtract" aria-selected="false">−</li>
+          <li class="op-option" role="option" tabindex="-1" data-op="mul" data-sym="×" aria-label="Multiply" aria-selected="false">×</li>
+          <li class="op-option" role="option" tabindex="-1" data-op="div" data-sym="÷" aria-label="Divide" aria-selected="false">÷</li>
+        </ul>
+        <button type="button" class="op-btn" id="op-btn" aria-haspopup="listbox" aria-controls="op-menu" aria-expanded="false" aria-label="Choose operation">
+          <span class="op-choose" aria-hidden="true"><span>+</span><span>−</span><span>×</span><span>÷</span></span>
+        </button>
+      </div>
+      <label for="calc-y" class="sr-only">Second number</label>
+      <input type="number" id="calc-y" class="calc-num calc-y" inputmode="decimal" step="any" placeholder="0" autocomplete="off" />
+
+      <div class="calc-rule" aria-hidden="true"></div>
+
+      <div class="calc-result is-idle" id="calc-result">
+        <span class="calc-value" id="calc-value" aria-live="polite">0</span>
+      </div>
+    </div>
+  </section>
+
+  <p class="hint"><strong>On your home screen:</strong> in Safari, tap Share, then “Add to Home Screen” — it will open full-screen as <strong>Area Ratio</strong>, with no address bar.</p>
+
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var LETTERS = ['C', 'D', 'E', 'F'];
+
+  var els = {
+    aLen: document.getElementById('a-len'),
+    aWid: document.getElementById('a-wid'),
+    bLen: document.getElementById('b-len'),
+    bWid: document.getElementById('b-wid'),
+    areaALive: document.getElementById('area-a-live'),
+    areaBLive: document.getElementById('area-b-live'),
+    extraList: document.getElementById('extra-list'),
+    addBtn: document.getElementById('add-btn'),
+    addLabel: document.getElementById('add-btn-label'),
+    clearBtn: document.getElementById('clear-btn'),
+    resAreaA: document.getElementById('res-area-a'),
+    resRatioB: document.getElementById('res-ratio-b'),
+    resPctB: document.getElementById('res-pct-b'),
+    resRowC: document.getElementById('res-row-c'),
+    resRatioC: document.getElementById('res-ratio-c'),
+    resPctC: document.getElementById('res-pct-c'),
+    resRowD: document.getElementById('res-row-d'),
+    resRatioD: document.getElementById('res-ratio-d'),
+    resPctD: document.getElementById('res-pct-d'),
+    resRowE: document.getElementById('res-row-e'),
+    resRatioE: document.getElementById('res-ratio-e'),
+    resPctE: document.getElementById('res-pct-e'),
+    resRowF: document.getElementById('res-row-f'),
+    resRatioF: document.getElementById('res-ratio-f'),
+    resPctF: document.getElementById('res-pct-f'),
+    resCumulative: document.getElementById('res-cumulative'),
+    resPctTotal: document.getElementById('res-pct-total'),
+    segB: document.getElementById('seg-b'),
+    segC: document.getElementById('seg-c'),
+    segD: document.getElementById('seg-d'),
+    segE: document.getElementById('seg-e'),
+    segF: document.getElementById('seg-f'),
+    legendC: document.getElementById('legend-c'),
+    legendD: document.getElementById('legend-d'),
+    legendE: document.getElementById('legend-e'),
+    legendF: document.getElementById('legend-f'),
+    barNote: document.getElementById('bar-note')
+  };
+
+  function num(input) {
+    if (!input) return 0;
+    var v = parseFloat(input.value);
+    return (isNaN(v) || v < 0) ? 0 : v;
+  }
+  function areaOf(lenInput, widInput) {
+    return num(lenInput) * num(widInput);
+  }
+
+  // --- Counts: each area box carries a whole-number count ("×N"), stored on the card ---
+  var UP_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14l5-5 5 5z"/></svg>';
+  var DOWN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>';
+
+  function makeCounter(slot) {
+    var name = slot.getAttribute('data-name');
+    slot.outerHTML =
+      '<span class="counter">' +
+        '<span class="count-value" aria-live="polite">×0</span>' +
+        '<button type="button" class="count-btn count-down" aria-label="Fewer of ' + name + '" disabled>' + DOWN_SVG + '</button>' +
+        '<button type="button" class="count-btn count-up" aria-label="More of ' + name + '" disabled>' + UP_SVG + '</button>' +
+      '</span>';
+  }
+  function cardInputs(card) { return card.querySelectorAll('.inputs-row input'); }
+  // A field part-way through being typed (e.g. "." before "5") reports value "" with
+  // validity.badInput; count that as filled so the count is not wiped mid-keystroke.
+  function isEmpty(input) {
+    return input.value.trim() === '' && !(input.validity && input.validity.badInput);
+  }
+  function bothFilled(card) {
+    var inputs = cardInputs(card);
+    return !isEmpty(inputs[0]) && !isEmpty(inputs[1]);
+  }
+  /** Both fields hold a real, non-zero size. */
+  function hasArea(card) {
+    var inputs = cardInputs(card);
+    return num(inputs[0]) > 0 && num(inputs[1]) > 0;
+  }
+  function countOf(card) { return parseInt(card.getAttribute('data-count') || '0', 10) || 0; }
+  function setCount(card, n) {
+    n = Math.max(0, Math.floor(n));
+    card.setAttribute('data-count', String(n));
+    card.querySelector('.count-value').textContent = '×' + n;
+    card.querySelector('.count-down').disabled = n === 0;
+    card.querySelector('.count-up').disabled = !hasArea(card);
+  }
+  // Typing: 0 jumps to 1 once both fields hold a non-zero size; emptying either field drops it
+  // to 0. A count above 1 is kept while a field passes through "0" (e.g. typing "0.5").
+  function syncCountToFields(card) {
+    if (!bothFilled(card)) setCount(card, 0);
+    else if (countOf(card) === 0 && hasArea(card)) setCount(card, 1);
+    else setCount(card, countOf(card));
+  }
+  function areaCards() {
+    return Array.prototype.slice.call(document.querySelectorAll('#app > .card, #extra-list > .card'));
+  }
+  function fmtArea(n) {
+    if (!n) return '0';
+    var rounded = Math.round(n * 10000) / 10000;
+    return rounded.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  }
+  function fmtRatio(r) { return r.toFixed(4); }
+  function fmtPct(r) { return (r * 100).toFixed(1) + '%'; }
+
+  // Extra targets are simply the cards currently in the list, in order:
+  // the first is always C, then D, E, F. Removing one promotes the rest.
+  function extraCards() {
+    return Array.prototype.slice.call(els.extraList.querySelectorAll('.extra-card'));
+  }
+  function extraArea(card) {
+    var inputs = cardInputs(card);
+    return areaOf(inputs[0], inputs[1]) * countOf(card);
+  }
+
+  function relabelExtras() {
+    extraCards().forEach(function (card, i) {
+      var letter = LETTERS[i];
+      var lower = letter.toLowerCase();
+      card.setAttribute('data-letter', letter);
+      card.querySelector('.letter').textContent = letter;
+      card.querySelector('.letter').className = 'letter ' + lower;
+      card.querySelector('.card-title-text').textContent = 'Area ' + letter;
+      var labels = card.querySelectorAll('label');
+      var inputs = cardInputs(card);
+      card.querySelector('.count-down').setAttribute('aria-label', 'Fewer of Area ' + letter);
+      card.querySelector('.count-up').setAttribute('aria-label', 'More of Area ' + letter);
+      inputs[0].id = 'extra-' + i + '-len';
+      inputs[1].id = 'extra-' + i + '-wid';
+      labels[0].setAttribute('for', inputs[0].id);
+      labels[1].setAttribute('for', inputs[1].id);
+      card.querySelector('.remove-btn').setAttribute('aria-label', 'Remove Area ' + letter);
+    });
+  }
+
+  function updateAddButton() {
+    var count = extraCards().length;
+    var next = ['C', 'D', 'E', 'F'][count];
+    if (count < 4) {
+      els.addLabel.textContent = 'Add target area ' + next;
+      els.addBtn.disabled = false;
+    } else {
+      els.addLabel.textContent = 'Areas C, D, E and F added';
+      els.addBtn.disabled = true;
+    }
+  }
+
+  function createExtraCard() {
+    var section = document.createElement('section');
+    section.className = 'card extra-card';
+    section.innerHTML =
+      '<div class="card-head">' +
+        '<div class="card-title"><span class="letter c">C</span><span><span class="card-title-text">Area C</span><span class="title-suffix"> · Target</span></span></div>' +
+        '<div class="head-right">' +
+          '<div class="card-area">= <b class="extra-area-live">0</b></div>' +
+          '<span class="counter-slot" data-name="Area C"></span>' +
+          '<button type="button" class="remove-btn" aria-label="Remove Area C">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>' +
+            '<span class="remove-text">Remove</span>' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="inputs-row">' +
+        '<div class="field"><label>Length</label>' +
+          '<input type="number" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" /></div>' +
+        '<div class="times" aria-hidden="true">×</div>' +
+        '<div class="field"><label>Width</label>' +
+          '<input type="number" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" /></div>' +
+      '</div>';
+    makeCounter(section.querySelector('.counter-slot'));
+    setCount(section, 0);
+    return section;
+  }
+
+  function calculate() {
+    // Ratios are measured against ONE A (unchanged math); targets are scaled by their counts.
+    // Percentages, the bar and the remainder are measured against ALL of A (countA copies).
+    var cardA = els.aLen.closest('.card');
+    var cardB = els.bLen.closest('.card');
+    var countA = countOf(cardA);
+    var areaA = countA > 0 ? areaOf(els.aLen, els.aWid) : 0;
+    var areaB = areaOf(els.bLen, els.bWid) * countOf(cardB);
+    var cards = extraCards();
+    var areaC = cards.length > 0 ? extraArea(cards[0]) : 0;
+    var areaD = cards.length > 1 ? extraArea(cards[1]) : 0;
+    var areaE = cards.length > 2 ? extraArea(cards[2]) : 0;
+    var areaF = cards.length > 3 ? extraArea(cards[3]) : 0;
+
+    // Each box shows the area of ONE item, as typed; counts are applied in the results.
+    els.areaALive.textContent = fmtArea(areaOf(els.aLen, els.aWid));
+    els.areaBLive.textContent = fmtArea(areaOf(els.bLen, els.bWid));
+    cards.forEach(function (card) {
+      var inputs = cardInputs(card);
+      card.querySelector('.extra-area-live').textContent = fmtArea(areaOf(inputs[0], inputs[1]));
+    });
+    var share = function (r) { return countA > 0 ? r / countA : 0; };
+
+    var ratioB = areaA > 0 ? areaB / areaA : 0;
+    var ratioC = areaA > 0 ? areaC / areaA : 0;
+    var ratioD = areaA > 0 ? areaD / areaA : 0;
+    var ratioE = areaA > 0 ? areaE / areaA : 0;
+    var ratioF = areaA > 0 ? areaF / areaA : 0;
+    var total = ratioB + ratioC + ratioD + ratioE + ratioF;
+
+    els.resAreaA.textContent = fmtArea(areaA * countA);
+    els.resRatioB.textContent = fmtRatio(ratioB);
+    els.resPctB.textContent = fmtPct(share(ratioB));
+
+    if (cards.length > 0) {
+      els.resRowC.classList.remove('hidden');
+      els.legendC.classList.remove('hidden');
+      els.resRatioC.textContent = fmtRatio(ratioC);
+      els.resPctC.textContent = fmtPct(share(ratioC));
+    } else {
+      els.resRowC.classList.add('hidden');
+      els.legendC.classList.add('hidden');
+    }
+    if (cards.length > 1) {
+      els.resRowD.classList.remove('hidden');
+      els.legendD.classList.remove('hidden');
+      els.resRatioD.textContent = fmtRatio(ratioD);
+      els.resPctD.textContent = fmtPct(share(ratioD));
+    } else {
+      els.resRowD.classList.add('hidden');
+      els.legendD.classList.add('hidden');
+    }
+    if (cards.length > 2) {
+      els.resRowE.classList.remove('hidden');
+      els.legendE.classList.remove('hidden');
+      els.resRatioE.textContent = fmtRatio(ratioE);
+      els.resPctE.textContent = fmtPct(share(ratioE));
+    } else {
+      els.resRowE.classList.add('hidden');
+      els.legendE.classList.add('hidden');
+    }
+    if (cards.length > 3) {
+      els.resRowF.classList.remove('hidden');
+      els.legendF.classList.remove('hidden');
+      els.resRatioF.textContent = fmtRatio(ratioF);
+      els.resPctF.textContent = fmtPct(share(ratioF));
+    } else {
+      els.resRowF.classList.add('hidden');
+      els.legendF.classList.add('hidden');
+    }
+
+    els.resCumulative.textContent = fmtRatio(total);
+    els.resPctTotal.textContent = fmtPct(share(total));
+
+    // Stacked bar shows how much of ALL of A is filled; scaled so it never overflows the track.
+    var filled = share(total);
+    var scale = filled > 1 ? 1 / filled : 1;
+    els.segB.style.width = (share(ratioB) * 100 * scale) + '%';
+    els.segC.style.width = (share(ratioC) * 100 * scale) + '%';
+    els.segD.style.width = (share(ratioD) * 100 * scale) + '%';
+    els.segE.style.width = (share(ratioE) * 100 * scale) + '%';
+    els.segF.style.width = (share(ratioF) * 100 * scale) + '%';
+
+    if (areaA === 0) {
+      els.barNote.textContent = (areaB + areaC + areaD + areaE + areaF) > 0
+        ? 'Enter a length and width for Area A to see the ratios.'
+        : '';
+      els.barNote.classList.remove('over');
+    } else if (total - countA > 1e-9) { // tolerance: e.g. 0.1 + 0.2 + 0.7 must count as an exact fill
+      els.barNote.textContent = 'Targets exceed Area A by ' + fmtRatio(total - countA) + ' / ' + fmtRatio(countA) +
+        ' (' + fmtPct(filled - 1) + ') — bar shown at full scale.';
+      els.barNote.classList.add('over');
+    } else if (total > 0) {
+      els.barNote.textContent = fmtRatio(Math.max(0, countA - total)) + ' / ' + fmtRatio(countA) +
+        ' remaining (' + fmtPct(Math.max(0, 1 - filled)) + ' of Area A).';
+      els.barNote.classList.remove('over');
+    } else {
+      els.barNote.textContent = '';
+      els.barNote.classList.remove('over');
+    }
+  }
+
+  function refresh() {
+    relabelExtras();
+    updateAddButton();
+    calculate();
+  }
+
+  // --- Events: addEventListener only, no inline handlers (the iOS fix) ---
+  els.addBtn.addEventListener('click', function () {
+    if (extraCards().length >= 4) return;
+    var card = createExtraCard();
+    els.extraList.appendChild(card);
+    refresh();
+    var first = card.querySelector('input');
+    if (first) first.focus({ preventScroll: false });
+  });
+
+  els.extraList.addEventListener('click', function (event) {
+    var btn = event.target.closest ? event.target.closest('.remove-btn') : null;
+    if (!btn) return;
+    var card = btn.closest('.extra-card');
+    if (card) card.remove();
+    refresh();
+    els.addBtn.focus({ preventScroll: true });
+  });
+
+  // Count arrows (A, B and the extra cards all share this handler).
+  document.getElementById('app').addEventListener('click', function (event) {
+    var btn = event.target.closest ? event.target.closest('.count-btn') : null;
+    if (!btn || btn.disabled) return;
+    var card = btn.closest('.card');
+    var next = countOf(card) + (btn.classList.contains('count-up') ? 1 : -1);
+    if (next <= 0) {
+      // Lowering to zero by hand clears that box's length and width.
+      var inputs = cardInputs(card);
+      inputs[0].value = '';
+      inputs[1].value = '';
+      setCount(card, 0);
+      // Keyboard users (Enter/Space, detail 0) keep focus now the button disables; a tap or
+      // click does not, so phones don't pop the on-screen keyboard over the results.
+      if (event.detail === 0) inputs[0].focus({ preventScroll: true });
+    } else {
+      setCount(card, next);
+    }
+    calculate();
+  });
+
+  els.clearBtn.addEventListener('click', function () {
+    [els.aLen, els.aWid, els.bLen, els.bWid].forEach(function (i) { i.value = ''; });
+    els.extraList.innerHTML = '';
+    areaCards().forEach(function (card) { setCount(card, 0); });
+    refresh();
+    els.aLen.focus({ preventScroll: true });
+  });
+
+  // iOS number fields don't always fire `input` reliably, so listen for both.
+  function onFieldEdit(event) {
+    var card = event.target.closest ? event.target.closest('.card') : null;
+    if (card && event.target.matches('.inputs-row input')) syncCountToFields(card);
+    calculate();
+  }
+  document.getElementById('app').addEventListener('input', onFieldEdit);
+  document.getElementById('app').addEventListener('change', onFieldEdit);
+
+  Array.prototype.slice.call(document.querySelectorAll('#app > .card .counter-slot')).forEach(makeCounter);
+  areaCards().forEach(function (card) { setCount(card, 0); syncCountToFields(card); });
+  calculate();
+})();
+
+// --- Simple calculator: + − × ÷. A negative result (or ÷ 0) is never shown; the box turns red and shakes. ---
+(function () {
+  'use strict';
+
+  var x = document.getElementById('calc-x');
+  var y = document.getElementById('calc-y');
+  var box = document.getElementById('calc-result');
+  var value = document.getElementById('calc-value');
+  var opBtn = document.getElementById('op-btn');
+  var menu = document.getElementById('op-menu');
+  var options = Array.prototype.slice.call(menu.querySelectorAll('.op-option'));
+  var op = null; // no operation until one is picked
+  var inError = false;
+
+  function read(input) {
+    var v = parseFloat(input.value);
+    return isNaN(v) ? 0 : v;
+  }
+  function filled(input) { return input.value.trim() !== '' || (input.validity && input.validity.badInput); }
+  function fmt(n) {
+    return n.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  }
+  function shake() {
+    box.classList.remove('shake');
+    void box.offsetWidth; // restart the animation if it is already mid-shake
+    box.classList.add('shake');
+  }
+  function showIdle() {
+    value.textContent = '0';
+    box.classList.remove('is-error', 'shake');
+    box.classList.add('is-idle');
+    inError = false;
+  }
+
+  function compute() {
+    if (!op || !filled(x) || !filled(y)) { showIdle(); return; } // nothing to judge yet
+    var a = read(x), b = read(y), result;
+    if (op === 'add') result = a + b;
+    else if (op === 'sub') result = a - b;
+    else if (op === 'mul') result = a * b;
+    else result = b === 0 ? NaN : a / b;
+
+    var rounded = Math.round(result * 10000) / 10000; // also tidies 0.1 + 0.2 to 0.3
+    var bad = isNaN(result) || !isFinite(result) || rounded < 0;
+    box.classList.remove('is-idle');
+    if (bad) {
+      // Nothing visible (a dash would read as a minus sign); the red outline says it. Screen readers get why.
+      value.innerHTML = '<span class="sr-only">' +
+        (isNaN(result) ? 'Error: cannot divide by zero' : 'Error: result is below zero') + '</span>';
+      box.classList.add('is-error');
+      if (!inError) shake(); // shake once as the error appears, not on every keystroke
+    } else {
+      value.textContent = fmt(rounded);
+      box.classList.remove('is-error', 'shake');
+    }
+    inError = bad;
+  }
+
+  // --- Operator picker ---
+  function isOpen() { return !menu.hidden; }
+  function openMenu() {
+    menu.hidden = false;
+    opBtn.setAttribute('aria-expanded', 'true');
+    var current = options.filter(function (o) { return o.getAttribute('data-op') === op; })[0] || options[0];
+    current.focus({ preventScroll: true });
+  }
+  function closeMenu(returnFocus) {
+    if (!isOpen()) return;
+    menu.hidden = true;
+    opBtn.setAttribute('aria-expanded', 'false');
+    if (returnFocus) opBtn.focus({ preventScroll: true });
+  }
+  function choose(option) {
+    op = option.getAttribute('data-op');
+    options.forEach(function (o) { o.setAttribute('aria-selected', String(o === option)); });
+    opBtn.textContent = option.getAttribute('data-sym');
+    opBtn.setAttribute('aria-label', 'Operation: ' + option.getAttribute('aria-label') + '. Change operation');
+    closeMenu(true);
+    if (inError) shake(); // picking an operation that is still wrong shakes again
+    compute();
+  }
+
+  opBtn.addEventListener('click', function () { if (isOpen()) closeMenu(true); else openMenu(); });
+  opBtn.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); openMenu(); }
+  });
+  menu.addEventListener('click', function (e) {
+    var option = e.target.closest ? e.target.closest('.op-option') : null;
+    if (option) choose(option);
+  });
+  menu.addEventListener('keydown', function (e) {
+    var i = options.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); options[Math.min(i + 1, options.length - 1)].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); options[Math.max(i - 1, 0)].focus(); }
+    else if (e.key === 'Home') { e.preventDefault(); options[0].focus(); }
+    else if (e.key === 'End') { e.preventDefault(); options[options.length - 1].focus(); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (i >= 0) choose(options[i]); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeMenu(true); }
+    else if (e.key === 'Tab') { closeMenu(false); }
+  });
+  // A tap anywhere else closes the picker without changing the operation.
+  document.addEventListener('pointerdown', function (e) {
+    if (isOpen() && !e.target.closest('.calc-op')) closeMenu(false);
+  });
+
+  box.addEventListener('animationend', function () { box.classList.remove('shake'); });
+  [x, y].forEach(function (input) {
+    input.addEventListener('input', compute);
+    input.addEventListener('change', compute);
+  });
+  compute();
+})();
+</script>
+</body>
+</html>
