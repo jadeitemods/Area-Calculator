@@ -217,8 +217,22 @@
   .result-row.total .result-pct{ font-size:.95rem; color:var(--accent); }
   .hidden{ display:none !important; }
 
-  /* Simple calculator, laid out like sums on paper. Deliberately not a .card: the area code
-     treats every "#app > .card" as an area box. */
+  /* Tabs: "Areas" and "Calculators" */
+  .tabs{
+    display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px;
+    background:var(--bg-deep); border:1px solid var(--border); border-radius:var(--radius);
+  }
+  .tab{
+    min-height:44px; padding:0 12px; border:0; border-radius:var(--radius-sm);
+    background:transparent; color:var(--muted); font-size:.92rem; font-weight:700; cursor:pointer;
+  }
+  .tab:hover{ color:var(--text); }
+  .tab[aria-selected="true"]{ background:var(--surface); color:var(--accent); box-shadow:0 2px 6px rgba(0,0,0,.3); }
+  .tab:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .tab-panel{ display:flex; flex-direction:column; gap:16px; }
+  .tab-panel[hidden]{ display:none; }
+
+  /* Calculators. Deliberately not .card: the area code treats every "#panel-areas > .card" as an area box. */
   .calc{
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
     padding:18px; box-shadow:0 6px 16px rgba(0,0,0,.22);
@@ -281,6 +295,20 @@
   }
   @media (prefers-reduced-motion: reduce){ .calc-result.shake, .op-menu{ animation:none; } }
 
+  /* Batches calculator: how many full batches fit a target, and what's left over */
+  .batch-inputs{ margin-bottom:12px; }
+  .batch-inputs .calc-num{ min-height:52px; }
+  .batch-result{ display:grid; grid-template-columns:1fr 1fr; padding:0; }
+  .batch-stat{ display:flex; flex-direction:column; align-items:flex-end; gap:2px; padding:10px 14px; min-width:0; }
+  .batch-stat + .batch-stat{ border-left:1px solid var(--border-soft); }
+  .batch-label{ font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size:.75rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+  .batch-eq{
+    margin:10px 2px 0; min-height:1.5em; text-align:right; color:var(--muted);
+    font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric:tabular-nums; font-size:.95rem;
+    overflow-wrap:anywhere;
+  }
+  .batch-eq b{ color:var(--accent); font-weight:700; }
+
   .hint{
     font-size:.83rem; color:var(--muted-2); line-height:1.55; margin:2px 2px 0;
   }
@@ -290,6 +318,12 @@
 <body>
 <main class="app" id="app">
 
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" class="tab" role="tab" id="tab-areas" aria-controls="panel-areas" aria-selected="true">Areas</button>
+    <button type="button" class="tab" role="tab" id="tab-calcs" aria-controls="panel-calcs" aria-selected="false" tabindex="-1">Calculators</button>
+  </div>
+
+  <div class="tab-panel" id="panel-areas" role="tabpanel" aria-labelledby="tab-areas">
   <header>
     <h1>How much of A is B, C, D, E, and F?</h1>
     <p class="subtitle">Enter the base area <strong>A</strong>, then each target. Ratios update as you type.</p>
@@ -402,10 +436,17 @@
       <span class="result-nums" aria-live="polite"><span class="result-value" id="res-cumulative">0.0000</span><span class="result-pct" id="res-pct-total">0.0%</span></span>
     </div>
   </section>
+  </div><!-- /panel-areas -->
+
+  <div class="tab-panel" id="panel-calcs" role="tabpanel" aria-labelledby="tab-calcs" hidden>
+  <header>
+    <h1>Calculators</h1>
+    <p class="subtitle">Quick sums, and how many full batches fit a target. Results update as you type.</p>
+  </header>
 
   <!-- Simple calculator -->
   <section class="calc" aria-labelledby="calc-title">
-    <h2 class="calc-title" id="calc-title">Calculator</h2>
+    <h2 class="calc-title" id="calc-title">Simple Calculator</h2>
     <div class="calc-sum">
       <label for="calc-x" class="sr-only">First number</label>
       <input type="number" id="calc-x" class="calc-num calc-x" inputmode="decimal" step="any" placeholder="0" autocomplete="off" />
@@ -431,6 +472,28 @@
       </div>
     </div>
   </section>
+
+  <!-- Batches calculator: e.g. batch size 22, target 717 → 32 batches, remainder 13 -->
+  <section class="calc" aria-labelledby="batch-title">
+    <h2 class="calc-title" id="batch-title">Batches</h2>
+    <div class="batch-inputs inputs-grid">
+      <div class="field">
+        <label for="batch-size">Batch Size</label>
+        <input type="number" id="batch-size" class="calc-num" inputmode="numeric" step="1" min="1" placeholder="0" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="batch-target">Target</label>
+        <input type="number" id="batch-target" class="calc-num" inputmode="numeric" step="1" min="0" placeholder="0" autocomplete="off" />
+      </div>
+    </div>
+    <div class="calc-rule" aria-hidden="true"></div>
+    <div class="calc-result batch-result is-idle" id="batch-result">
+      <div class="batch-stat"><span class="batch-label">Batches</span><span class="calc-value" id="batch-count">0</span></div>
+      <div class="batch-stat"><span class="batch-label">Remainder</span><span class="calc-value" id="batch-rem">0</span></div>
+    </div>
+    <p class="batch-eq" id="batch-eq" aria-live="polite"></p>
+  </section>
+  </div><!-- /panel-calcs -->
 
   <p class="hint"><strong>On your home screen:</strong> in Safari, tap Share, then “Add to Home Screen” — it will open full-screen as <strong>Area Ratio</strong>, with no address bar.</p>
 
@@ -535,7 +598,7 @@
     else setCount(card, countOf(card));
   }
   function areaCards() {
-    return Array.prototype.slice.call(document.querySelectorAll('#app > .card, #extra-list > .card'));
+    return Array.prototype.slice.call(document.querySelectorAll('#panel-areas > .card, #extra-list > .card'));
   }
   function fmtArea(n) {
     if (!n) return '0';
@@ -779,7 +842,7 @@
   document.getElementById('app').addEventListener('input', onFieldEdit);
   document.getElementById('app').addEventListener('change', onFieldEdit);
 
-  Array.prototype.slice.call(document.querySelectorAll('#app > .card .counter-slot')).forEach(makeCounter);
+  Array.prototype.slice.call(document.querySelectorAll('#panel-areas > .card .counter-slot')).forEach(makeCounter);
   areaCards().forEach(function (card) { setCount(card, 0); syncCountToFields(card); });
   calculate();
 })();
@@ -895,6 +958,110 @@
     input.addEventListener('change', compute);
   });
   compute();
+})();
+// --- Batches calculator: how many whole batches of Batch Size fit within Target, and the Remainder. ---
+// Whole numbers only. A batch size of 0, a negative number or a decimal gets the red outline and shake.
+(function () {
+  'use strict';
+
+  var size = document.getElementById('batch-size');
+  var target = document.getElementById('batch-target');
+  var box = document.getElementById('batch-result');
+  var countEl = document.getElementById('batch-count');
+  var remEl = document.getElementById('batch-rem');
+  var eq = document.getElementById('batch-eq');
+  var inError = false;
+
+  function filled(input) { return input.value.trim() !== '' || (input.validity && input.validity.badInput); }
+  // A whole number of 0 or more, or null if the field holds anything else.
+  function whole(input) {
+    if (input.validity && input.validity.badInput) return null;
+    var v = Number(input.value);
+    return (isFinite(v) && Math.floor(v) === v && v >= 0) ? v : null;
+  }
+  function fmt(n) { return n.toLocaleString('en-US'); }
+  function shake() {
+    box.classList.remove('shake');
+    void box.offsetWidth; // restart the animation if it is already mid-shake
+    box.classList.add('shake');
+  }
+
+  function compute() {
+    if (!filled(size) || !filled(target)) { // nothing to judge until both are in
+      countEl.textContent = '0';
+      remEl.textContent = '0';
+      eq.textContent = '';
+      box.classList.remove('is-error', 'shake');
+      box.classList.add('is-idle');
+      inError = false;
+      return;
+    }
+    var s = whole(size), t = whole(target);
+    var reason = null;
+    if (s === null || t === null) reason = 'Error: whole numbers of zero or more only';
+    else if (s === 0) reason = 'Error: batch size must be at least 1';
+
+    box.classList.remove('is-idle');
+    if (reason) {
+      countEl.textContent = '';
+      remEl.textContent = '';
+      eq.innerHTML = '<span class="sr-only">' + reason + '</span>';
+      box.classList.add('is-error');
+      if (!inError) shake(); // shake once as the error appears, not on every keystroke
+      inError = true;
+      return;
+    }
+    var batches = Math.floor(t / s);
+    var rem = t - batches * s;
+    countEl.textContent = fmt(batches);
+    remEl.textContent = fmt(rem);
+    eq.innerHTML = fmt(s) + ' × <b>' + fmt(batches) + '</b> + <b>' + fmt(rem) + '</b> = ' + fmt(t);
+    box.classList.remove('is-error', 'shake');
+    inError = false;
+  }
+
+  box.addEventListener('animationend', function () { box.classList.remove('shake'); });
+  [size, target].forEach(function (input) {
+    input.addEventListener('input', compute);
+    input.addEventListener('change', compute);
+  });
+  compute();
+})();
+
+// --- Tabs: "Areas" and "Calculators". The last tab used is remembered on this device. ---
+(function () {
+  'use strict';
+
+  var KEY = 'area-ratio-tab';
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+
+  function select(tab, moveFocus) {
+    tabs.forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+    if (moveFocus) tab.focus();
+    try { localStorage.setItem(KEY, tab.id); } catch (e) { /* storage unavailable: just don't remember */ }
+  }
+
+  tabs.forEach(function (tab, i) {
+    tab.addEventListener('click', function () { select(tab, false); });
+    tab.addEventListener('keydown', function (e) {
+      var next = null;
+      if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
+      else if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
+      else if (e.key === 'Home') next = tabs[0];
+      else if (e.key === 'End') next = tabs[tabs.length - 1];
+      if (next) { e.preventDefault(); select(next, true); }
+    });
+  });
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) { /* ignore */ }
+  var start = tabs.filter(function (t) { return t.id === saved; })[0];
+  if (start) select(start, false);
 })();
 </script>
 </body>
