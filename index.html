@@ -309,6 +309,10 @@
   }
   .batch-eq b{ color:var(--accent); font-weight:700; }
 
+  /* Millimeters to inches */
+  .mm-field{ margin-bottom:12px; }
+  .mm-result{ justify-content:space-between; gap:12px; }
+
   .hint{
     font-size:.83rem; color:var(--muted-2); line-height:1.55; margin:2px 2px 0;
   }
@@ -441,7 +445,7 @@
   <div class="tab-panel" id="panel-calcs" role="tabpanel" aria-labelledby="tab-calcs" hidden>
   <header>
     <h1>Calculators</h1>
-    <p class="subtitle">Quick sums, and how many full batches fit a target. Results update as you type.</p>
+    <p class="subtitle">Quick sums, how many full batches fit a target, and millimeters to inches. Results update as you type.</p>
   </header>
 
   <!-- Simple calculator -->
@@ -492,6 +496,19 @@
       <div class="batch-stat"><span class="batch-label">Remainder</span><span class="calc-value" id="batch-rem">0</span></div>
     </div>
     <p class="batch-eq" id="batch-eq" aria-live="polite"></p>
+  </section>
+  <!-- Millimeters to inches: 1 inch = 25.4 mm exactly -->
+  <section class="calc" aria-labelledby="mm-title">
+    <h2 class="calc-title" id="mm-title">Millimeters to Inches</h2>
+    <div class="field mm-field">
+      <label for="mm-input">Millimeters</label>
+      <input type="number" id="mm-input" class="calc-num" inputmode="decimal" step="any" min="0" placeholder="0" autocomplete="off" />
+    </div>
+    <div class="calc-rule" aria-hidden="true"></div>
+    <div class="calc-result mm-result is-idle" id="mm-result">
+      <span class="batch-label">Inches</span>
+      <span class="calc-value" id="mm-value" aria-live="polite">0</span>
+    </div>
   </section>
   </div><!-- /panel-calcs -->
 
@@ -1025,6 +1042,51 @@
     input.addEventListener('input', compute);
     input.addEventListener('change', compute);
   });
+  compute();
+})();
+
+// --- Millimeters to inches (1 in = 25.4 mm), up to four decimal places. A negative length gets the red outline and shake. ---
+(function () {
+  'use strict';
+
+  var input = document.getElementById('mm-input');
+  var box = document.getElementById('mm-result');
+  var value = document.getElementById('mm-value');
+  var inError = false;
+
+  function shake() {
+    box.classList.remove('shake');
+    void box.offsetWidth; // restart the animation if it is already mid-shake
+    box.classList.add('shake');
+  }
+
+  function compute() {
+    var empty = input.value.trim() === '' && !(input.validity && input.validity.badInput);
+    if (empty) {
+      value.textContent = '0';
+      box.classList.remove('is-error', 'shake');
+      box.classList.add('is-idle');
+      inError = false;
+      return;
+    }
+    var mm = Number(input.value);
+    box.classList.remove('is-idle');
+    if (input.validity.badInput || !isFinite(mm) || mm < 0) {
+      value.innerHTML = '<span class="sr-only">Error: enter a length of zero or more</span>';
+      box.classList.add('is-error');
+      if (!inError) shake(); // shake once as the error appears, not on every keystroke
+      inError = true;
+      return;
+    }
+    var inches = Math.round(mm / 25.4 * 10000) / 10000;
+    value.textContent = inches.toLocaleString('en-US', { maximumFractionDigits: 4 });
+    box.classList.remove('is-error', 'shake');
+    inError = false;
+  }
+
+  box.addEventListener('animationend', function () { box.classList.remove('shake'); });
+  input.addEventListener('input', compute);
+  input.addEventListener('change', compute);
   compute();
 })();
 
